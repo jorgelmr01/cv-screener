@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Screener - LinkedIn CV Evaluator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 CV Screener</h1>
+            <p class="subtitle">Evaluate LinkedIn CVs with AI-powered analysis</p>
+        </header>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label for="apiKey">OpenAI API Key:</label>
+                <input type="password" id="apiKey" placeholder="sk-..." />
+                <small>Your API key is stored locally and never sent to our servers</small>
+            </div>
+
+            <div class="input-group">
+                <label for="gptModel">GPT Model:</label>
+                <select id="gptModel">
+                    <optgroup label="GPT-5 Family">
+                        <option value="gpt-5.1" selected>GPT-5.1 - Best for coding and agentic tasks with configurable reasoning effort</option>
+                        <option value="gpt-5">GPT-5 - Previous intelligent reasoning model for coding and agentic tasks</option>
+                        <option value="gpt-5-mini">GPT-5 mini - Faster, cost-efficient version of GPT-5 for well-defined tasks</option>
+                        <option value="gpt-5-nano">GPT-5 nano - Fastest, most cost-efficient version of GPT-5</option>
+                    </optgroup>
+                    <optgroup label="Other Models">
+                        <option value="o3">o3 - Reasoning model for complex tasks, succeeded by GPT-5</option>
+                        <option value="gpt-4.1">GPT-4.1 - Smartest non-reasoning model</option>
+                        <option value="o4-mini">o4-mini - Fast, cost-efficient reasoning model, succeeded by GPT-5 mini</option>
+                        <option value="gpt-4.1-mini">GPT-4.1 mini - Smaller, faster version of GPT-4.1</option>
+                    </optgroup>
+                </select>
+                <small>Select the GPT model to use for CV analysis</small>
+            </div>
+
+            <div class="input-group">
+                <label for="jobDescription">Job Position Description:</label>
+                <textarea id="jobDescription" rows="5" placeholder="Enter the job position description, requirements, and context here..."></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="cvFiles">Upload LinkedIn CVs (PDF):</label>
+                <input type="file" id="cvFiles" multiple accept=".pdf" />
+                <small>Select multiple PDF files to evaluate</small>
+            </div>
+
+            <button id="analyzeBtn" class="btn-primary" disabled>Analyze CVs</button>
+        </div>
+
+        <div id="loadingSection" class="loading-section hidden">
+            <div class="spinner"></div>
+            <p id="loadingText">Processing CVs...</p>
+            <div id="progressBar" class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+        </div>
+
+        <div id="resultsSection" class="results-section hidden">
+            <div class="results-header">
+                <h2>Evaluation Results</h2>
+                <div class="sort-controls">
+                    <label>Sort by:</label>
+                    <select id="sortBy">
+                        <option value="total">Total Score</option>
+                        <option value="relevance">Profile Relevance</option>
+                        <option value="education">Education Level</option>
+                        <option value="jobs">Previous Jobs</option>
+                        <option value="proactivity">Proactivity</option>
+                    </select>
+                </div>
+            </div>
+            <div id="resultsGallery" class="gallery"></div>
+        </div>
+
+        <div id="errorSection" class="error-section hidden"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
