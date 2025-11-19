@@ -18,6 +18,50 @@ let evaluationCriteria = {
 let chatHistory = [];
 let chatCVSelection = new Set();
 
+// Helper function to parse JSON from AI response (handles various formats)
+function parseJSONResponse(content, context = '') {
+    let jsonText = content.trim();
+    
+    // Remove markdown code blocks if present
+    if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
+    }
+    
+    // Try to extract JSON object if there's extra text
+    // Look for the first { and last }
+    const firstBrace = jsonText.indexOf('{');
+    const lastBrace = jsonText.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && firstBrace < lastBrace) {
+        jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+    }
+    
+    // Try to parse
+    try {
+        return JSON.parse(jsonText);
+    } catch (parseError) {
+        // Log the problematic content for debugging
+        console.error(`Error parsing JSON ${context}:`, {
+            originalContent: content.substring(0, 500), // First 500 chars
+            extractedText: jsonText.substring(0, 500),
+            error: parseError.message
+        });
+        
+        // Try one more time with more aggressive cleaning
+        jsonText = jsonText
+            .replace(/^[^{]*/, '') // Remove everything before first {
+            .replace(/[^}]*$/, '}') // Remove everything after last }
+            .replace(/,\s*}/g, '}') // Remove trailing commas
+            .replace(/,\s*]/g, ']'); // Remove trailing commas in arrays
+        
+        try {
+            return JSON.parse(jsonText);
+        } catch (finalError) {
+            throw new Error(`No se pudo parsear la respuesta JSON. Contenido recibido: ${content.substring(0, 200)}... Error: ${parseError.message}`);
+        }
+    }
+}
+
 // Helper function to get model-specific API parameters
 function getModelParameters(model, tokenCount, defaultTemperature) {
     const gpt5Models = ['gpt-5.1', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano'];
@@ -509,19 +553,22 @@ Evalúa el CV en las siguientes 4 dimensiones (cada una puntuada de 0-10):
 
 ${criteriaSection}
 
-Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown, sin bloques de código, solo el JSON):
+IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. NO incluyas texto adicional, explicaciones, ni formato markdown. El JSON debe comenzar con { y terminar con }. Ejemplo del formato exacto requerido:
+
 {
-  "relevance": <número 0-10>,
-  "education": <número 0-10>,
-  "previousJobs": <número 0-10>,
-  "proactivity": <número 0-10>,
+  "relevance": 8,
+  "education": 7,
+  "previousJobs": 9,
+  "proactivity": 6,
   "analysis": {
-    "relevance": "<explicación breve en español>",
-    "education": "<explicación breve en español>",
-    "previousJobs": "<explicación breve en español>",
-    "proactivity": "<explicación breve en español>"
+    "relevance": "Explicación breve en español",
+    "education": "Explicación breve en español",
+    "previousJobs": "Explicación breve en español",
+    "proactivity": "Explicación breve en español"
   }
-}`;
+}
+
+Responde SOLO con el JSON, sin ningún otro texto antes o después.`;
 
     try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -561,13 +608,8 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown, s
         const data = await response.json();
         const content = data.choices[0].message.content.trim();
         
-        // Remove markdown code blocks if present
-        let jsonText = content;
-        if (jsonText.startsWith('```')) {
-            jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        }
-        
-        const analysis = JSON.parse(jsonText);
+        // Parse JSON with robust error handling
+        const analysis = parseJSONResponse(content, `para ${fileName}`);
         
         // Validate scores are in range
         ['relevance', 'education', 'previousJobs', 'proactivity'].forEach(key => {
@@ -579,8 +621,8 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown, s
         return analysis;
     } catch (error) {
         // Enhance error messages
-        if (error.message.includes('JSON')) {
-            throw new Error(`Error al analizar la respuesta de IA para ${fileName}. La IA puede haber devuelto JSON inválido.`);
+        if (error.message.includes('JSON') || error.message.includes('parsear')) {
+            throw new Error(`Error al analizar la respuesta de IA para ${fileName}. ${error.message}`);
         }
         if (error.message.includes('model') || error.message.includes('not available')) {
             throw error; // Re-throw model errors as-is
@@ -1195,14 +1237,15 @@ Devuelve SOLO un array JSON de objetos de pregunta en este formato (sin markdown
             }
 
             const data = await response.json();
-            let content = data.choices[0].message.content.trim();
+            const content = data.choices[0].message.content.trim();
             
-            // Remove markdown code blocks if present
-            if (content.startsWith('```')) {
-                content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            // Parse JSON with robust error handling
+            const questions = parseJSONResponse(content, `para preguntas de ${candidateName}`);
+            
+            // Validate questions structure
+            if (!Array.isArray(questions)) {
+                throw new Error('La respuesta no es un array de preguntas válido.');
             }
-            
-            const questions = JSON.parse(content);
             
             // Store questions for download
             result.interviewQuestions = questions;
@@ -1221,7 +1264,11 @@ Devuelve SOLO un array JSON de objetos de pregunta en este formato (sin markdown
             
         } catch (error) {
             const questionsList = sectionDiv.querySelector('.candidate-questions-list');
-            questionsList.innerHTML = `<div class="error-message">Error al generar preguntas: ${error.message}</div>`;
+            let errorMsg = error.message;
+            if (error.message.includes('JSON') || error.message.includes('parsear')) {
+                errorMsg = `Error al parsear la respuesta de IA. ${error.message}`;
+            }
+            questionsList.innerHTML = `<div class="error-message">Error al generar preguntas: ${errorMsg}</div>`;
             console.error('Interview questions error:', error);
         }
     }
