@@ -1200,14 +1200,20 @@ Genera ${numQuestions} preguntas de entrevista reflexivas que:
 4. Evalúen el ajuste cultural y habilidades blandas
 5. Aborden cualquier preocupación o pregunta que surja al revisar su historial
 
-Devuelve SOLO un array JSON de objetos de pregunta en este formato (sin markdown, sin bloques de código):
+IMPORTANTE: Devuelve ÚNICAMENTE un array JSON válido. NO incluyas texto adicional, explicaciones, ni formato markdown. El JSON debe comenzar con [ y terminar con ]. Ejemplo del formato exacto requerido:
+
 [
   {
     "question": "Texto de la pregunta aquí",
     "purpose": "Breve explicación de por qué esta pregunta es relevante"
   },
-  ...
-]`;
+  {
+    "question": "Otra pregunta",
+    "purpose": "Propósito de esta pregunta"
+  }
+]
+
+Responde SOLO con el JSON, sin ningún otro texto antes o después.`;
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
