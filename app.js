@@ -3,9 +3,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 let apiKey = '';
 let jobDescription = '';
+let personalizedInstructions = '';
 let cvFiles = [];
 let results = [];
 let selectedModel = 'gpt-5.1';
+let selectedCVs = new Set();
+const MAX_SELECTED = 10;
 
 // Load saved API key from localStorage
 window.addEventListener('DOMContentLoaded', () => {
@@ -32,6 +35,10 @@ document.getElementById('jobDescription').addEventListener('input', (e) => {
     checkFormValidity();
 });
 
+document.getElementById('personalizedInstructions').addEventListener('input', (e) => {
+    personalizedInstructions = e.target.value;
+});
+
 document.getElementById('cvFiles').addEventListener('change', (e) => {
     cvFiles = Array.from(e.target.files);
     checkFormValidity();
@@ -43,6 +50,8 @@ document.getElementById('gptModel').addEventListener('change', (e) => {
 
 document.getElementById('analyzeBtn').addEventListener('click', analyzeCVs);
 document.getElementById('sortBy').addEventListener('change', sortResults);
+document.getElementById('searchCVs').addEventListener('input', filterCVs);
+document.getElementById('clearSelection').addEventListener('click', clearSelection);
 
 function checkFormValidity() {
     const btn = document.getElementById('analyzeBtn');
@@ -67,30 +76,51 @@ async function analyzeCVs() {
     results = [];
     
     try {
+        // Process all CVs sequentially to avoid overwhelming the browser
         for (let i = 0; i < cvFiles.length; i++) {
             const file = cvFiles[i];
             loadingText.textContent = `Processing ${i + 1}/${cvFiles.length}: ${file.name}...`;
             updateProgress((i / cvFiles.length) * 100);
             
-            // Extract text from PDF
-            const cvText = await extractTextFromPDF(file);
+            try {
+                // Extract text from PDF
+                const cvText = await extractTextFromPDF(file);
+                
+                // Extract contact information
+                const contactInfo = extractContactInfo(cvText);
+                
+                // Create object URL for PDF preview
+                const pdfUrl = URL.createObjectURL(file);
+                
+                // Analyze with ChatGPT
+                const analysis = await analyzeCVWithGPT(cvText, file.name);
+                
+                results.push({
+                    fileName: file.name,
+                    cvText: cvText,
+                    pdfUrl: pdfUrl,
+                    ...contactInfo,
+                    ...analysis
+                });
+            } catch (fileError) {
+                console.error(`Error processing ${file.name}:`, fileError);
+                // Continue with next file even if one fails
+                loadingText.textContent = `Error processing ${file.name}, continuing...`;
+            }
             
-            // Extract contact information
-            const contactInfo = extractContactInfo(cvText);
-            
-            // Analyze with ChatGPT
-            const analysis = await analyzeCVWithGPT(cvText, file.name);
-            
-            results.push({
-                fileName: file.name,
-                cvText: cvText,
-                ...contactInfo,
-                ...analysis
-            });
+            // Allow browser to breathe between files
+            if (i % 5 === 0 && i > 0) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
         }
         
         updateProgress(100);
         loadingText.textContent = 'Analysis complete!';
+        
+        // Calculate total scores for all results
+        results.forEach(result => {
+            result.totalScore = result.relevance + result.education + result.previousJobs + result.proactivity;
+        });
         
         // Display results
         setTimeout(() => {
@@ -191,13 +221,23 @@ function extractContactInfo(cvText) {
 }
 
 async function analyzeCVWithGPT(cvText, fileName) {
+    let instructionsSection = '';
+    if (personalizedInstructions && personalizedInstructions.trim()) {
+        instructionsSection = `
+
+Additional Personalized Instructions:
+${personalizedInstructions}
+
+IMPORTANT: Apply these personalized instructions when evaluating the CV. Adjust scores accordingly if the instructions specify exclusions (e.g., exclude candidates from certain schools/companies) or prioritizations.`;
+    }
+    
     const prompt = `You are an expert HR recruiter evaluating a LinkedIn-generated CV. Analyze the following CV and provide a detailed evaluation.
 
 CV Content:
 ${cvText}
 
 Job Position Context:
-${jobDescription}
+${jobDescription}${instructionsSection}
 
 Evaluate the CV on the following 4 dimensions (each scored 0-10):
 
@@ -281,17 +321,17 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no code
 
 function displayResults() {
     const resultsSection = document.getElementById('resultsSection');
-    const gallery = document.getElementById('resultsGallery');
-    
-    // Calculate total scores
-    results.forEach(result => {
-        result.totalScore = result.relevance + result.education + result.previousJobs + result.proactivity;
-    });
+    resultsSection.classList.remove('hidden');
     
     // Sort by total score (default)
     sortResults();
     
-    resultsSection.classList.remove('hidden');
+    // Render sidebar list
+    renderSidebar();
+    
+    // Clear selection
+    selectedCVs.clear();
+    updateSelectionUI();
 }
 
 function sortResults() {
@@ -312,17 +352,143 @@ function sortResults() {
         return 0;
     });
     
-    renderGallery();
+    renderSidebar();
+    renderSelectedGallery();
 }
 
-function renderGallery() {
-    const gallery = document.getElementById('resultsGallery');
+function renderSidebar() {
+    const sidebarList = document.getElementById('sidebarList');
+    sidebarList.innerHTML = '';
+    
+    const searchTerm = document.getElementById('searchCVs').value.toLowerCase();
+    const filteredResults = results.filter(result => {
+        const name = (result.name || '').toLowerCase();
+        const fileName = result.fileName.toLowerCase();
+        return name.includes(searchTerm) || fileName.includes(searchTerm);
+    });
+    
+    filteredResults.forEach((result, index) => {
+        const listItem = createSidebarItem(result, index + 1);
+        sidebarList.appendChild(listItem);
+    });
+}
+
+function createSidebarItem(result, rank) {
+    const item = document.createElement('div');
+    item.className = `sidebar-item ${selectedCVs.has(result.fileName) ? 'selected' : ''}`;
+    item.dataset.fileName = result.fileName;
+    
+    const shortName = result.name || result.fileName.replace('.pdf', '');
+    const displayName = shortName.length > 30 ? shortName.substring(0, 30) + '...' : shortName;
+    
+    item.innerHTML = `
+        <div class="sidebar-item-checkbox">
+            <input type="checkbox" ${selectedCVs.has(result.fileName) ? 'checked' : ''} 
+                   ${selectedCVs.size >= MAX_SELECTED && !selectedCVs.has(result.fileName) ? 'disabled' : ''} />
+        </div>
+        <div class="sidebar-item-content">
+            <div class="sidebar-item-name">${escapeHtml(displayName)}</div>
+            <div class="sidebar-item-score">${result.totalScore.toFixed(1)}/40</div>
+        </div>
+        <div class="sidebar-item-rank">#${rank}</div>
+    `;
+    
+    // Add click handler
+    item.addEventListener('click', (e) => {
+        if (e.target.type !== 'checkbox') {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (!checkbox.disabled) {
+                checkbox.checked = !checkbox.checked;
+                toggleSelection(result.fileName, checkbox.checked);
+            }
+        }
+    });
+    
+    // Checkbox handler
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('change', (e) => {
+        e.stopPropagation();
+        toggleSelection(result.fileName, checkbox.checked);
+    });
+    
+    return item;
+}
+
+function toggleSelection(fileName, isSelected) {
+    if (isSelected) {
+        if (selectedCVs.size < MAX_SELECTED) {
+            selectedCVs.add(fileName);
+        } else {
+            return; // Can't select more
+        }
+    } else {
+        selectedCVs.delete(fileName);
+    }
+    
+    updateSelectionUI();
+    renderSidebar();
+    renderSelectedGallery();
+}
+
+function clearSelection() {
+    selectedCVs.clear();
+    updateSelectionUI();
+    renderSidebar();
+    renderSelectedGallery();
+}
+
+function updateSelectionUI() {
+    const count = selectedCVs.size;
+    document.getElementById('selectedCount').textContent = count;
+    document.getElementById('selectedBadge').textContent = `${count} selected`;
+    
+    // Update sidebar items
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+        const fileName = item.dataset.fileName;
+        if (selectedCVs.has(fileName)) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+        
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.checked = selectedCVs.has(fileName);
+            checkbox.disabled = count >= MAX_SELECTED && !selectedCVs.has(fileName);
+        }
+    });
+}
+
+function renderSelectedGallery() {
+    const gallery = document.getElementById('selectedGallery');
+    
+    if (selectedCVs.size === 0) {
+        gallery.innerHTML = `
+            <div class="empty-state">
+                <p>Select CVs from the sidebar to view detailed analysis</p>
+                <small>You can select up to 10 CVs at a time</small>
+            </div>
+        `;
+        return;
+    }
+    
     gallery.innerHTML = '';
     
-    results.forEach((result, index) => {
-        const card = createCVCard(result, index + 1);
+    const selectedResults = results.filter(r => selectedCVs.has(r.fileName));
+    // Get ranks based on sorted results array
+    const sortedSelected = [...selectedResults].map(result => {
+        const rank = results.findIndex(r => r.fileName === result.fileName) + 1;
+        return { result, rank };
+    }).sort((a, b) => b.result.totalScore - a.result.totalScore);
+    
+    sortedSelected.forEach(({ result, rank }) => {
+        const card = createCVCard(result, rank);
         gallery.appendChild(card);
     });
+}
+
+function filterCVs() {
+    renderSidebar();
 }
 
 function createCVCard(result, rank) {
@@ -411,11 +577,20 @@ function showCVPreview(result) {
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h2>CV Preview: ${result.fileName}</h2>
+                <h2>CV Preview: ${escapeHtml(result.fileName)}</h2>
                 <button class="modal-close" onclick="this.closest('.cv-modal').remove()">×</button>
             </div>
             <div class="modal-body">
-                <div class="cv-preview-text">${formatCVText(result.cvText)}</div>
+                ${result.pdfUrl ? `
+                    <iframe src="${result.pdfUrl}" class="pdf-preview-iframe" type="application/pdf"></iframe>
+                    <div class="pdf-fallback">
+                        <p>If the PDF doesn't display, <a href="${result.pdfUrl}" target="_blank">click here to open it in a new tab</a></p>
+                    </div>
+                ` : `
+                    <div class="pdf-error">
+                        <p>PDF preview not available. The file may have been removed.</p>
+                    </div>
+                `}
             </div>
         </div>
     `;
@@ -423,6 +598,10 @@ function showCVPreview(result) {
     // Close on background click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
+            // Clean up object URL when closing
+            if (result.pdfUrl) {
+                URL.revokeObjectURL(result.pdfUrl);
+            }
             modal.remove();
         }
     });
@@ -430,23 +609,26 @@ function showCVPreview(result) {
     // Close on Escape key
     const closeHandler = (e) => {
         if (e.key === 'Escape') {
+            if (result.pdfUrl) {
+                URL.revokeObjectURL(result.pdfUrl);
+            }
             modal.remove();
             document.removeEventListener('keydown', closeHandler);
         }
     };
     document.addEventListener('keydown', closeHandler);
     
+    // Clean up when modal is removed
+    const closeBtn = modal.querySelector('.modal-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            if (result.pdfUrl) {
+                URL.revokeObjectURL(result.pdfUrl);
+            }
+        });
+    }
+    
     document.body.appendChild(modal);
-}
-
-function formatCVText(text) {
-    // Format the text with line breaks preserved
-    return text
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .map(line => `<p>${escapeHtml(line)}</p>`)
-        .join('');
 }
 
 function escapeHtml(text) {

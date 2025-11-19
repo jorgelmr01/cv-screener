@@ -31,6 +31,8 @@
                         <option value="gpt-5-nano">GPT-5 nano - Fastest, most cost-efficient version of GPT-5</option>
                     </optgroup>
                     <optgroup label="Other Models">
+                        <option value="gpt-4o">GPT-4o - Fast, intelligent, flexible GPT model</option>
+                        <option value="gpt-4o-mini">GPT-4o mini - Fast, affordable small model for focused tasks</option>
                         <option value="o3">o3 - Reasoning model for complex tasks, succeeded by GPT-5</option>
                         <option value="gpt-4.1">GPT-4.1 - Smartest non-reasoning model</option>
                         <option value="o4-mini">o4-mini - Fast, cost-efficient reasoning model, succeeded by GPT-5 mini</option>
@@ -43,6 +45,12 @@
             <div class="input-group">
                 <label for="jobDescription">Job Position Description:</label>
                 <textarea id="jobDescription" rows="5" placeholder="Enter the job position description, requirements, and context here..."></textarea>
+            </div>
+
+            <div class="input-group config-box">
+                <label for="personalizedInstructions">⚙️ Personalized Instructions (Optional):</label>
+                <textarea id="personalizedInstructions" rows="4" placeholder="Example: Exclude candidates from X or Y school/company. Prioritize candidates with specific skills. Apply any custom filtering criteria..."></textarea>
+                <small>Add custom instructions for the AI analysis (e.g., exclude certain schools/companies, prioritize specific criteria)</small>
             </div>
 
             <div class="input-group">
@@ -63,20 +71,47 @@
         </div>
 
         <div id="resultsSection" class="results-section hidden">
-            <div class="results-header">
-                <h2>Evaluation Results</h2>
-                <div class="sort-controls">
-                    <label>Sort by:</label>
-                    <select id="sortBy">
-                        <option value="total">Total Score</option>
-                        <option value="relevance">Profile Relevance</option>
-                        <option value="education">Education Level</option>
-                        <option value="jobs">Previous Jobs</option>
-                        <option value="proactivity">Proactivity</option>
-                    </select>
+            <div class="results-layout">
+                <div class="sidebar">
+                    <div class="sidebar-header">
+                        <h3>All CVs</h3>
+                        <div class="sort-controls">
+                            <label>Sort:</label>
+                            <select id="sortBy">
+                                <option value="total">Total Score</option>
+                                <option value="relevance">Relevance</option>
+                                <option value="education">Education</option>
+                                <option value="jobs">Jobs</option>
+                                <option value="proactivity">Proactivity</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="sidebar-search">
+                        <input type="text" id="searchCVs" placeholder="Search CVs..." />
+                    </div>
+                    <div class="sidebar-list" id="sidebarList">
+                        <!-- CV list items will be inserted here -->
+                    </div>
+                    <div class="sidebar-footer">
+                        <div class="selection-info">
+                            <span id="selectedCount">0</span> selected (max 10)
+                        </div>
+                        <button id="clearSelection" class="btn-clear">Clear Selection</button>
+                    </div>
+                </div>
+                <div class="main-content">
+                    <div class="main-header">
+                        <h2>Selected CVs</h2>
+                        <div class="selected-count-badge" id="selectedBadge">0 selected</div>
+                    </div>
+                    <div id="selectedGallery" class="selected-gallery">
+                        <div class="empty-state">
+                            <p>Select CVs from the sidebar to view detailed analysis</p>
+                            <small>You can select up to 10 CVs at a time</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="resultsGallery" class="gallery"></div>
         </div>
 
         <div id="errorSection" class="error-section hidden"></div>
