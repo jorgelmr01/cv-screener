@@ -6,14 +6,14 @@ let jobDescription = '';
 let personalizedInstructions = '';
 let cvFiles = [];
 let results = [];
-let selectedModel = 'gpt-5.1';
+let selectedModel = 'gpt-4o-mini';
 let selectedCVs = new Set();
 const MAX_SELECTED = 10;
 let evaluationCriteria = {
-    relevance: { name: 'Profile Relevance to Position', desc: 'Compare the CV content with the job position context. Consider skills, experience, and overall fit.' },
-    education: { name: 'Education Level', desc: 'Evaluate the prestige of educational institutions. Main degree counts for 80% of the value, additional certifications, exchange programs, etc. count for 20%.' },
-    previousJobs: { name: 'Previous Jobs', desc: 'Assess the prestige of previous employers and the level of the last position held.' },
-    proactivity: { name: 'Proactivity', desc: 'Evaluate extracurricular activities, certifications, continuous learning, and initiative shown beyond basic job requirements.' }
+    relevance: { name: 'Relevancia del Perfil al Puesto', desc: 'Compara el contenido del CV con el contexto del puesto de trabajo. Considera habilidades, experiencia y ajuste general.' },
+    education: { name: 'Nivel Educativo', desc: 'Evalúa el prestigio de las instituciones educativas. El título principal cuenta el 80% del valor, certificaciones adicionales, programas de intercambio, etc. cuentan el 20%.' },
+    previousJobs: { name: 'Trabajos Previos', desc: 'Evalúa el prestigio de empleadores anteriores y el nivel del último puesto ocupado.' },
+    proactivity: { name: 'Proactividad', desc: 'Evalúa actividades extracurriculares, certificaciones, aprendizaje continuo e iniciativa mostrada más allá de los requisitos básicos del trabajo.' }
 };
 let chatHistory = [];
 let chatCVSelection = new Set();
@@ -146,7 +146,7 @@ function checkFormValidity() {
 
 async function analyzeCVs() {
     if (!apiKey || !jobDescription || cvFiles.length === 0) {
-        showError('Please fill in all fields and select at least one CV file.');
+        showError('Por favor completa todos los campos y selecciona al menos un archivo CV.');
         return;
     }
 
@@ -165,7 +165,7 @@ async function analyzeCVs() {
         // Process all CVs sequentially to avoid overwhelming the browser
         for (let i = 0; i < cvFiles.length; i++) {
             const file = cvFiles[i];
-            loadingText.textContent = `Processing ${i + 1}/${cvFiles.length}: ${file.name}...`;
+            loadingText.textContent = `Procesando ${i + 1}/${cvFiles.length}: ${file.name}...`;
             updateProgress((i / cvFiles.length) * 100);
             
             try {
@@ -202,8 +202,22 @@ async function analyzeCVs() {
                 });
             } catch (fileError) {
                 console.error(`Error processing ${file.name}:`, fileError);
-                // Continue with next file even if one fails
-                loadingText.textContent = `Error processing ${file.name}, continuing...`;
+                
+                // Show detailed error message
+                let errorMsg = `Error al procesar ${file.name}: `;
+                if (fileError.message) {
+                    errorMsg += fileError.message;
+                } else {
+                    errorMsg += 'Ocurrió un error desconocido';
+                }
+                
+                // Check if it's a model-related error
+                if (fileError.message && (fileError.message.includes('model') || fileError.message.includes('invalid') || fileError.message.includes('not found'))) {
+                    errorMsg += `. El modelo "${selectedModel}" puede no estar disponible. Por favor intenta con un modelo diferente (ej., gpt-4o-mini).`;
+                }
+                
+                showError(errorMsg);
+                loadingText.textContent = `Error al procesar ${file.name}, continuando...`;
             }
             
             // Allow browser to breathe between files
@@ -213,22 +227,44 @@ async function analyzeCVs() {
         }
         
         updateProgress(100);
-        loadingText.textContent = 'Analysis complete!';
+        loadingText.textContent = '¡Análisis completado!';
         
         // Calculate total scores for all results
         results.forEach(result => {
             result.totalScore = result.relevance + result.education + result.previousJobs + result.proactivity;
         });
         
+        // Check if we have any results
+        if (results.length === 0) {
+            loadingSection.classList.add('hidden');
+            showError('No se analizaron CVs exitosamente. Por favor revisa los mensajes de error arriba e intenta de nuevo. Asegúrate de que el modelo GPT seleccionado esté disponible y tu clave API sea válida.');
+            return;
+        }
+        
         // Display results
         setTimeout(() => {
             loadingSection.classList.add('hidden');
             displayResults();
+            
+            // Show warning if some files failed
+            const failedCount = cvFiles.length - results.length;
+            if (failedCount > 0) {
+                showError(`Advertencia: ${failedCount} de ${cvFiles.length} CV(s) fallaron al analizar. Solo ${results.length} CV(s) fueron procesados exitosamente.`);
+            }
         }, 500);
         
     } catch (error) {
         loadingSection.classList.add('hidden');
-        showError(`Error during analysis: ${error.message}`);
+        let errorMsg = `Error durante el análisis: ${error.message}`;
+        
+        // Add helpful suggestions for common errors
+        if (error.message.includes('model') || error.message.includes('not available')) {
+            errorMsg += '\n\nSugerencia: Intenta usar gpt-4o-mini o gpt-4o en su lugar.';
+        } else if (error.message.includes('API key') || error.message.includes('unauthorized')) {
+            errorMsg += '\n\nSugerencia: Por favor verifica que tu clave API de OpenAI sea correcta y tenga créditos suficientes.';
+        }
+        
+        showError(errorMsg);
         console.error('Analysis error:', error);
     }
 }
@@ -270,11 +306,11 @@ async function extractTextFromPDF(file) {
                 // Store positions for name extraction
                 resolve({ text: fullText, positions: textWithPositions });
             } catch (error) {
-                reject(new Error(`Failed to parse PDF: ${error.message}`));
+                reject(new Error(`Error al analizar el PDF: ${error.message}`));
             }
         };
         
-        fileReader.onerror = () => reject(new Error('Failed to read file'));
+        fileReader.onerror = () => reject(new Error('Error al leer el archivo'));
         fileReader.readAsArrayBuffer(file);
     });
 }
@@ -422,10 +458,10 @@ async function analyzeCVWithGPT(cvText, fileName) {
     if (personalizedInstructions && personalizedInstructions.trim()) {
         instructionsSection = `
 
-Additional Personalized Instructions:
+Instrucciones Personalizadas Adicionales:
 ${personalizedInstructions}
 
-IMPORTANT: Apply these personalized instructions when evaluating the CV. Adjust scores accordingly if the instructions specify exclusions (e.g., exclude candidates from certain schools/companies) or prioritizations.`;
+IMPORTANTE: Aplica estas instrucciones personalizadas al evaluar el CV. Ajusta las puntuaciones en consecuencia si las instrucciones especifican exclusiones (ej., excluir candidatos de ciertas escuelas/empresas) o priorizaciones.`;
     }
     
     // Build criteria section from custom criteria
@@ -433,29 +469,29 @@ IMPORTANT: Apply these personalized instructions when evaluating the CV. Adjust 
         return `${index + 1}. **${crit.name}** (0-10): ${crit.desc}`;
     }).join('\n\n');
     
-    const prompt = `You are an expert HR recruiter evaluating a LinkedIn-generated CV. Analyze the following CV and provide a detailed evaluation.
+    const prompt = `Eres un reclutador de recursos humanos experto evaluando un CV generado por LinkedIn. Analiza el siguiente CV y proporciona una evaluación detallada. Responde TODO en español.
 
-CV Content:
+Contenido del CV:
 ${cvText}
 
-Job Position Context:
+Contexto del Puesto de Trabajo:
 ${jobDescription}${instructionsSection}
 
-Evaluate the CV on the following 4 dimensions (each scored 0-10):
+Evalúa el CV en las siguientes 4 dimensiones (cada una puntuada de 0-10):
 
 ${criteriaSection}
 
-Respond ONLY with a valid JSON object in this exact format (no markdown, no code blocks, just the JSON):
+Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown, sin bloques de código, solo el JSON):
 {
-  "relevance": <number 0-10>,
-  "education": <number 0-10>,
-  "previousJobs": <number 0-10>,
-  "proactivity": <number 0-10>,
+  "relevance": <número 0-10>,
+  "education": <número 0-10>,
+  "previousJobs": <número 0-10>,
+  "proactivity": <número 0-10>,
   "analysis": {
-    "relevance": "<brief explanation>",
-    "education": "<brief explanation>",
-    "previousJobs": "<brief explanation>",
-    "proactivity": "<brief explanation>"
+    "relevance": "<explicación breve en español>",
+    "education": "<explicación breve en español>",
+    "previousJobs": "<explicación breve en español>",
+    "proactivity": "<explicación breve en español>"
   }
 }`;
 
@@ -471,7 +507,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no code
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are an expert HR recruiter. Always respond with valid JSON only, no markdown formatting.'
+                        content: 'Eres un reclutador de recursos humanos experto. Siempre responde con JSON válido únicamente, sin formato markdown. Todas las respuestas deben estar en español.'
                     },
                     {
                         role: 'user',
@@ -485,7 +521,14 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no code
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error?.message || `API error: ${response.status}`);
+            const errorMessage = errorData.error?.message || `Error de API: ${response.status}`;
+            
+            // Check for model-related errors
+            if (errorMessage.includes('model') || errorMessage.includes('not found') || errorMessage.includes('invalid') || errorMessage.includes('does not exist')) {
+                throw new Error(`El modelo "${selectedModel}" no está disponible o es inválido. Error: ${errorMessage}. Por favor selecciona un modelo diferente (ej., gpt-4o-mini).`);
+            }
+            
+            throw new Error(`Error de API: ${errorMessage}`);
         }
 
         const data = await response.json();
@@ -502,16 +545,20 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no code
         // Validate scores are in range
         ['relevance', 'education', 'previousJobs', 'proactivity'].forEach(key => {
             if (analysis[key] < 0 || analysis[key] > 10) {
-                throw new Error(`Invalid score for ${key}: ${analysis[key]}`);
+                throw new Error(`Puntuación inválida para ${key}: ${analysis[key]}`);
             }
         });
         
         return analysis;
     } catch (error) {
+        // Enhance error messages
         if (error.message.includes('JSON')) {
-            throw new Error(`Failed to parse AI response for ${fileName}. The AI may have returned invalid JSON.`);
+            throw new Error(`Error al analizar la respuesta de IA para ${fileName}. La IA puede haber devuelto JSON inválido.`);
         }
-        throw error;
+        if (error.message.includes('model') || error.message.includes('not available')) {
+            throw error; // Re-throw model errors as-is
+        }
+        throw new Error(`Error al analizar ${fileName}: ${error.message}`);
     }
 }
 
@@ -666,8 +713,8 @@ function renderSelectedGallery() {
     if (selectedCVs.size === 0) {
         gallery.innerHTML = `
             <div class="empty-state">
-                <p>Select CVs from the sidebar to view detailed analysis</p>
-                <small>You can select up to 10 CVs at a time</small>
+                <p>Selecciona CVs de la barra lateral para ver el análisis detallado</p>
+                <small>Puedes seleccionar hasta 10 CVs a la vez</small>
             </div>
         `;
         // Hide interview questions section
@@ -712,7 +759,7 @@ function createCVCard(result, rank) {
     
     const contactInfo = `
         <div class="contact-info">
-            <div class="candidate-name">${result.name || 'Name not found'}</div>
+            <div class="candidate-name">${result.name || 'Nombre no encontrado'}</div>
             ${result.email ? `<div class="contact-item"><span class="contact-icon">📧</span> <a href="mailto:${result.email}" onclick="event.stopPropagation()">${result.email}</a></div>` : ''}
             ${result.phone ? `<div class="contact-item"><span class="contact-icon">📞</span> <a href="tel:${result.phone.replace(/\s/g, '')}" onclick="event.stopPropagation()">${result.phone}</a></div>` : ''}
         </div>
@@ -763,14 +810,14 @@ function createCVCard(result, rank) {
         </div>
         
         <div class="analysis-text">
-            <h4>Analysis:</h4>
+            <h4>Análisis:</h4>
             <p><strong>${escapeHtml(evaluationCriteria.relevance.name)}:</strong> ${escapeHtml(result.analysis.relevance)}</p>
             <p><strong>${escapeHtml(evaluationCriteria.education.name)}:</strong> ${escapeHtml(result.analysis.education)}</p>
             <p><strong>${escapeHtml(evaluationCriteria.previousJobs.name)}:</strong> ${escapeHtml(result.analysis.previousJobs)}</p>
             <p><strong>${escapeHtml(evaluationCriteria.proactivity.name)}:</strong> ${escapeHtml(result.analysis.proactivity)}</p>
         </div>
         
-        <div class="preview-hint">Click to preview full CV</div>
+        <div class="preview-hint">Haz clic para previsualizar el CV completo</div>
     `;
     
     return card;
@@ -778,7 +825,7 @@ function createCVCard(result, rank) {
 
 async function showCVPreview(result) {
     if (!result.pdfUrl && !result.pdfDataUrl && !result.pdfFile) {
-        showError('PDF preview not available. The file may have been removed.');
+        showError('Vista previa del PDF no disponible. El archivo puede haber sido eliminado.');
         return;
     }
     
@@ -786,35 +833,39 @@ async function showCVPreview(result) {
     const modal = document.createElement('div');
     modal.className = 'cv-modal';
     
-    const cleanup = () => {
-        // Don't revoke URL as we might need it for download
-    };
-    
-    // Get PDF URL - prefer data URL, fallback to object URL
-    const pdfUrl = result.pdfDataUrl || result.pdfUrl;
+    // Ensure we have a valid URL for opening in new tab
+    let pdfUrlForOpen = null;
+    if (result.pdfDataUrl) {
+        pdfUrlForOpen = result.pdfDataUrl; // Data URLs work best for opening
+    } else if (result.pdfFile) {
+        // Create a fresh object URL from the file
+        pdfUrlForOpen = URL.createObjectURL(result.pdfFile);
+    } else if (result.pdfUrl) {
+        pdfUrlForOpen = result.pdfUrl;
+    }
     
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h2>CV Preview: ${escapeHtml(result.fileName)}</h2>
-                <button class="modal-close" aria-label="Close">×</button>
+                <h2>Vista Previa del CV: ${escapeHtml(result.fileName)}</h2>
+                <button class="modal-close" aria-label="Cerrar">×</button>
             </div>
             <div class="modal-body">
                 <div class="pdf-container">
                     <div id="pdfViewer" class="pdf-viewer-canvas">
-                        <div class="pdf-loading">Loading PDF...</div>
+                        <div class="pdf-loading">Cargando PDF...</div>
                     </div>
                     <iframe 
-                        src="${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1" 
+                        src="${pdfUrlForOpen || ''}#toolbar=1&navpanes=1&scrollbar=1" 
                         class="pdf-preview-iframe" 
                         type="application/pdf"
-                        title="PDF Preview"
+                        title="Vista Previa del PDF"
                         style="display: none;">
                     </iframe>
                 </div>
                 <div class="pdf-fallback">
-                    <button class="btn-download-pdf">📥 Download PDF</button>
-                    <a href="${pdfUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link" id="pdfOpenLink">🔗 Open in new tab</a>
+                    <button class="btn-download-pdf">📥 Descargar PDF</button>
+                    <button class="btn-open-pdf" id="pdfOpenBtn">🔗 Abrir en nueva pestaña</button>
                 </div>
             </div>
         </div>
@@ -830,23 +881,22 @@ async function showCVPreview(result) {
         // Fallback to iframe
         const iframe = modal.querySelector('.pdf-preview-iframe');
         const viewer = modal.querySelector('#pdfViewer');
-        if (iframe && viewer) {
+        if (iframe && viewer && pdfUrlForOpen) {
             viewer.style.display = 'none';
             iframe.style.display = 'block';
+            iframe.src = pdfUrlForOpen + '#toolbar=1&navpanes=1&scrollbar=1';
         }
     }
     
     // Close button handler
     const closeBtn = modal.querySelector('.modal-close');
     closeBtn.addEventListener('click', () => {
-        cleanup();
         modal.remove();
     });
     
     // Close on background click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-            cleanup();
             modal.remove();
         }
     });
@@ -854,42 +904,59 @@ async function showCVPreview(result) {
     // Close on Escape key
     const closeHandler = (e) => {
         if (e.key === 'Escape') {
-            cleanup();
             modal.remove();
             document.removeEventListener('keydown', closeHandler);
         }
     };
     document.addEventListener('keydown', closeHandler);
     
-    // Make sure PDF link works
-    const pdfLink = modal.querySelector('#pdfOpenLink');
-    if (pdfLink) {
-        pdfLink.addEventListener('click', (e) => {
+    // Open in new tab button handler
+    const pdfOpenBtn = modal.querySelector('#pdfOpenBtn');
+    if (pdfOpenBtn) {
+        pdfOpenBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             e.preventDefault();
             
-            // Try multiple methods to ensure it opens
-            const url = result.pdfDataUrl || result.pdfUrl;
-            if (url) {
-                // Method 1: Direct window.open
-                const newWindow = window.open('', '_blank', 'noopener,noreferrer');
-                if (newWindow) {
-                    newWindow.location.href = url;
-                } else {
-                    // Method 2: Create link and click
+            try {
+                let urlToOpen = null;
+                
+                // Prefer data URL as it's most reliable for opening in new tab
+                if (result.pdfDataUrl) {
+                    urlToOpen = result.pdfDataUrl;
+                } else if (result.pdfFile) {
+                    // Create a fresh blob URL from the file
+                    urlToOpen = URL.createObjectURL(result.pdfFile);
+                } else if (result.pdfUrl) {
+                    // Try to use existing URL
+                    urlToOpen = result.pdfUrl;
+                }
+                
+                if (!urlToOpen) {
+                    showError('No se puede abrir el PDF. El archivo puede haber sido eliminado.');
+                    return;
+                }
+                
+                // Method 1: Direct window.open with URL
+                const newWindow = window.open(urlToOpen, '_blank', 'noopener,noreferrer');
+                
+                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                    // Popup blocked or failed - try creating a link
                     const link = document.createElement('a');
-                    link.href = url;
+                    link.href = urlToOpen;
                     link.target = '_blank';
                     link.rel = 'noopener noreferrer';
+                    link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
-                    document.body.removeChild(link);
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                    }, 100);
                 }
+            } catch (error) {
+                console.error('Error opening PDF:', error);
+                showError('Error al abrir el PDF en nueva pestaña. Por favor intenta descargarlo en su lugar.');
             }
         });
-        
-        // Also set href directly
-        pdfLink.href = pdfUrl;
     }
     
     // Download button handler
@@ -1005,18 +1072,18 @@ function escapeHtml(text) {
 // Interview Questions Generator - Per Profile
 async function generateInterviewQuestions() {
     if (selectedCVs.size === 0) {
-        showError('Please select at least one CV to generate interview questions.');
+        showError('Por favor selecciona al menos un CV para generar preguntas de entrevista.');
         return;
     }
     
     const numQuestions = parseInt(document.getElementById('numQuestions').value) || 5;
     if (numQuestions < 1 || numQuestions > 20) {
-        showError('Number of questions must be between 1 and 20.');
+        showError('El número de preguntas debe estar entre 1 y 20.');
         return;
     }
     
     const questionsContainer = document.getElementById('interviewQuestions');
-    questionsContainer.innerHTML = '<div class="loading-questions">Generating questions for each candidate...</div>';
+    questionsContainer.innerHTML = '<div class="loading-questions">Generando preguntas para cada candidato...</div>';
     
     const selectedResults = results.filter(r => selectedCVs.has(r.fileName));
     const sortedSelected = [...selectedResults].sort((a, b) => b.totalScore - a.totalScore);
@@ -1033,10 +1100,10 @@ async function generateInterviewQuestions() {
             sectionDiv.innerHTML = `
                 <div class="candidate-questions-header">
                     <h4>${safeName}</h4>
-                    <button class="btn-download-questions" data-candidate="${safeName.replace(/'/g, "&#39;")}">📥 Download</button>
+                    <button class="btn-download-questions" data-candidate="${safeName.replace(/'/g, "&#39;")}">📥 Descargar</button>
                 </div>
                 <div class="candidate-questions-list" data-candidate="${safeName}">
-                    <div class="loading-questions">Generating questions...</div>
+                    <div class="loading-questions">Generando preguntas...</div>
                 </div>
             `;
             
@@ -1048,27 +1115,27 @@ async function generateInterviewQuestions() {
             
             questionsContainer.appendChild(sectionDiv);
             
-            const prompt = `You are an expert HR interviewer. Generate ${numQuestions} interview questions for the following candidate based on their CV and the job position.
+            const prompt = `Eres un entrevistador de recursos humanos experto. Genera ${numQuestions} preguntas de entrevista en español para el siguiente candidato basándote en su CV y el puesto de trabajo. Responde TODO en español.
 
-Job Position Description:
+Descripción del Puesto de Trabajo:
 ${jobDescription}
 
-Candidate CV:
-CV for ${candidateName}:
+CV del Candidato:
+CV de ${candidateName}:
 ${result.cvText}
 
-Generate ${numQuestions} thoughtful interview questions that:
-1. Identify gaps between the candidate's experience and the job requirements
-2. Explore their strengths and relevant experience
-3. Test their knowledge and skills mentioned in the CV
-4. Assess cultural fit and soft skills
-5. Address any concerns or questions that arise from reviewing their background
+Genera ${numQuestions} preguntas de entrevista reflexivas que:
+1. Identifiquen brechas entre la experiencia del candidato y los requisitos del trabajo
+2. Exploren sus fortalezas y experiencia relevante
+3. Prueben su conocimiento y habilidades mencionadas en el CV
+4. Evalúen el ajuste cultural y habilidades blandas
+5. Aborden cualquier preocupación o pregunta que surja al revisar su historial
 
-Return ONLY a JSON array of question objects in this format (no markdown, no code blocks):
+Devuelve SOLO un array JSON de objetos de pregunta en este formato (sin markdown, sin bloques de código):
 [
   {
-    "question": "Question text here",
-    "purpose": "Brief explanation of why this question is relevant"
+    "question": "Texto de la pregunta aquí",
+    "purpose": "Breve explicación de por qué esta pregunta es relevante"
   },
   ...
 ]`;
@@ -1084,7 +1151,7 @@ Return ONLY a JSON array of question objects in this format (no markdown, no cod
                     messages: [
                         {
                             role: 'system',
-                            content: 'You are an expert HR interviewer. Always respond with valid JSON only, no markdown formatting.'
+                            content: 'Eres un entrevistador de recursos humanos experto. Siempre responde con JSON válido únicamente, sin formato markdown. Todas las respuestas deben estar en español.'
                         },
                         {
                             role: 'user',
@@ -1098,7 +1165,7 @@ Return ONLY a JSON array of question objects in this format (no markdown, no cod
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error?.message || `API error: ${response.status}`);
+                throw new Error(errorData.error?.message || `Error de API: ${response.status}`);
             }
 
             const data = await response.json();
@@ -1118,7 +1185,7 @@ Return ONLY a JSON array of question objects in this format (no markdown, no cod
             const questionsList = sectionDiv.querySelector('.candidate-questions-list');
             questionsList.innerHTML = questions.map((q, index) => `
                 <div class="question-item">
-                    <div class="question-number">Q${index + 1}</div>
+                    <div class="question-number">P${index + 1}</div>
                     <div class="question-content">
                         <div class="question-text">${escapeHtml(q.question)}</div>
                         <div class="question-purpose">${escapeHtml(q.purpose)}</div>
@@ -1128,7 +1195,7 @@ Return ONLY a JSON array of question objects in this format (no markdown, no cod
             
         } catch (error) {
             const questionsList = sectionDiv.querySelector('.candidate-questions-list');
-            questionsList.innerHTML = `<div class="error-message">Error generating questions: ${error.message}</div>`;
+            questionsList.innerHTML = `<div class="error-message">Error al generar preguntas: ${error.message}</div>`;
             console.error('Interview questions error:', error);
         }
     }
@@ -1138,7 +1205,7 @@ Return ONLY a JSON array of question objects in this format (no markdown, no cod
 window.downloadQuestions = function(candidateName, button) {
     const result = results.find(r => (r.name || r.fileName.replace('.pdf', '')) === candidateName);
     if (!result || !result.interviewQuestions) {
-        showError('Questions not available for download.');
+        showError('Las preguntas no están disponibles para descargar.');
         return;
     }
     
@@ -1153,8 +1220,8 @@ window.downloadQuestions = function(candidateName, button) {
         const safePurpose = escapeHtml(q.purpose);
         return `
         <div class="question-item">
-            <div class="question-text">Q${index + 1}: ${safeQuestion}</div>
-            <div class="question-purpose">Purpose: ${safePurpose}</div>
+            <div class="question-text">P${index + 1}: ${safeQuestion}</div>
+            <div class="question-purpose">Propósito: ${safePurpose}</div>
         </div>`;
     }).join('');
     
@@ -1162,7 +1229,7 @@ window.downloadQuestions = function(candidateName, button) {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Interview Questions - ${safeName}</title>
+    <title>Preguntas de Entrevista - ${safeName}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
         h1 { color: #0066ff; }
@@ -1173,10 +1240,10 @@ window.downloadQuestions = function(candidateName, button) {
     </style>
 </head>
 <body>
-    <h1>Interview Questions</h1>
-    <h2>Candidate: ${safeName}</h2>
-    <p><strong>Job Position:</strong> ${safeJobDesc}</p>
-    <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+    <h1>Preguntas de Entrevista</h1>
+    <h2>Candidato: ${safeName}</h2>
+    <p><strong>Puesto de Trabajo:</strong> ${safeJobDesc}</p>
+    <p><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
     <hr>
     ${questionsHtml}
 </body>
@@ -1204,8 +1271,8 @@ function updateChatCVSelector() {
     const dropdownText = document.getElementById('chatDropdownText');
     
     if (results.length === 0) {
-        cvList.innerHTML = '<p class="no-cvs">No CVs available. Analyze CVs first.</p>';
-        dropdownText.textContent = 'No CVs available';
+        cvList.innerHTML = '<p class="no-cvs">No hay CVs disponibles. Analiza CVs primero.</p>';
+        dropdownText.textContent = 'No hay CVs disponibles';
         return;
     }
     
@@ -1257,13 +1324,13 @@ function updateChatDropdownText() {
     const count = chatCVSelection.size;
     
     if (count === 0) {
-        dropdownText.textContent = 'Select CVs...';
+        dropdownText.textContent = 'Seleccionar CVs...';
     } else if (count === 1) {
         const selected = Array.from(chatCVSelection)[0];
         const result = results.find(r => r.fileName === selected);
-        dropdownText.textContent = result ? (result.name || result.fileName) : '1 CV selected';
+        dropdownText.textContent = result ? (result.name || result.fileName) : '1 CV seleccionado';
     } else {
-        dropdownText.textContent = `${count} CVs selected`;
+        dropdownText.textContent = `${count} CVs seleccionados`;
     }
 }
 
@@ -1274,12 +1341,12 @@ async function sendChatMessage() {
     if (!question) return;
     
     if (chatCVSelection.size === 0) {
-        showError('Please select at least one CV to ask questions about.');
+        showError('Por favor selecciona al menos un CV para hacer preguntas.');
         return;
     }
     
     if (!apiKey) {
-        showError('Please enter your OpenAI API key first.');
+        showError('Por favor ingresa tu clave API de OpenAI primero.');
         return;
     }
     
@@ -1288,25 +1355,25 @@ async function sendChatMessage() {
     input.value = '';
     
     // Show loading
-    const loadingId = addChatMessage('assistant', 'Thinking...', true);
+    const loadingId = addChatMessage('assistant', 'Pensando...', true);
     
     try {
         const selectedResults = results.filter(r => chatCVSelection.has(r.fileName));
         const cvContext = selectedResults.map(r => {
-            return `CV: ${r.name || r.fileName}\nScore: ${r.totalScore.toFixed(1)}/40\n\nCV Content:\n${r.cvText}`;
+            return `CV: ${r.name || r.fileName}\nPuntuación: ${r.totalScore.toFixed(1)}/40\n\nContenido del CV:\n${r.cvText}`;
         }).join('\n\n---\n\n');
         
-        const prompt = `You are an expert HR recruiter assistant. Answer the following question based on the provided CV(s) and job position context.
+        const prompt = `Eres un asistente experto de reclutamiento de recursos humanos. Responde la siguiente pregunta basándote en el/los CV(s) proporcionado(s) y el contexto del puesto de trabajo. Responde TODO en español.
 
-Job Position Description:
+Descripción del Puesto de Trabajo:
 ${jobDescription}
 
-Selected CV(s):
+CV(s) Seleccionado(s):
 ${cvContext}
 
-Question: ${question}
+Pregunta: ${question}
 
-Provide a helpful, detailed answer based on the CV information. Be specific and reference relevant details from the CV(s).`;
+Proporciona una respuesta útil y detallada basada en la información del CV. Sé específico y referencia detalles relevantes del/los CV(s).`;
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -1319,7 +1386,7 @@ Provide a helpful, detailed answer based on the CV information. Be specific and 
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are an expert HR recruiter assistant. Provide helpful, detailed answers based on CV information.'
+                        content: 'Eres un asistente experto de reclutamiento de recursos humanos. Proporciona respuestas útiles y detalladas basadas en información de CVs. Todas las respuestas deben estar en español.'
                     },
                     {
                         role: 'user',
@@ -1333,7 +1400,7 @@ Provide a helpful, detailed answer based on the CV information. Be specific and 
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error?.message || `API error: ${response.status}`);
+            throw new Error(errorData.error?.message || `Error de API: ${response.status}`);
         }
 
         const data = await response.json();
@@ -1394,7 +1461,17 @@ function updateProgress(percent) {
 
 function showError(message) {
     const errorSection = document.getElementById('errorSection');
-    errorSection.textContent = `Error: ${message}`;
+    errorSection.innerHTML = `<strong>⚠️ Error:</strong> ${escapeHtml(message)}`;
     errorSection.classList.remove('hidden');
+    
+    // Scroll to error section
+    errorSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Auto-hide after 10 seconds for warnings, but keep errors visible
+    if (message.toLowerCase().includes('warning')) {
+        setTimeout(() => {
+            errorSection.classList.add('hidden');
+        }, 10000);
+    }
 }
 

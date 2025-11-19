@@ -1,96 +1,98 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV Screener - LinkedIn CV Evaluator</title>
+    <title>Evaluador de CVs - Analizador de CVs de LinkedIn</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>📋 CV Screener</h1>
-            <p class="subtitle">Evaluate LinkedIn CVs with AI-powered analysis</p>
+            <h1>📋 Evaluador de CVs</h1>
+            <p class="subtitle">Evalúa CVs de LinkedIn con análisis potenciado por IA</p>
         </header>
 
         <div class="input-section">
             <div class="input-group">
-                <label for="apiKey">OpenAI API Key:</label>
+                <label for="apiKey">Clave API de OpenAI:</label>
                 <input type="password" id="apiKey" placeholder="sk-..." />
-                <small>Your API key is stored locally and never sent to our servers</small>
+                <small>Tu clave API se almacena localmente y nunca se envía a nuestros servidores</small>
             </div>
 
             <div class="input-group">
-                <label for="gptModel">GPT Model:</label>
+                <label for="gptModel">Modelo GPT:</label>
                 <select id="gptModel">
-                    <optgroup label="GPT-5 Family">
-                        <option value="gpt-5.1" selected>GPT-5.1 - Best for coding and agentic tasks with configurable reasoning effort</option>
-                        <option value="gpt-5">GPT-5 - Previous intelligent reasoning model for coding and agentic tasks</option>
-                        <option value="gpt-5-mini">GPT-5 mini - Faster, cost-efficient version of GPT-5 for well-defined tasks</option>
-                        <option value="gpt-5-nano">GPT-5 nano - Fastest, most cost-efficient version of GPT-5</option>
+                    <optgroup label="Familia GPT-4">
+                        <option value="gpt-4o-mini" selected>GPT-4o mini - Modelo pequeño rápido y económico para tareas específicas (Recomendado)</option>
+                        <option value="gpt-4o">GPT-4o - Modelo GPT rápido, inteligente y flexible</option>
                     </optgroup>
-                    <optgroup label="Other Models">
-                        <option value="gpt-4o">GPT-4o - Fast, intelligent, flexible GPT model</option>
-                        <option value="gpt-4o-mini">GPT-4o mini - Fast, affordable small model for focused tasks</option>
-                        <option value="o3">o3 - Reasoning model for complex tasks, succeeded by GPT-5</option>
-                        <option value="gpt-4.1">GPT-4.1 - Smartest non-reasoning model</option>
-                        <option value="o4-mini">o4-mini - Fast, cost-efficient reasoning model, succeeded by GPT-5 mini</option>
-                        <option value="gpt-4.1-mini">GPT-4.1 mini - Smaller, faster version of GPT-4.1</option>
+                    <optgroup label="Familia GPT-5">
+                        <option value="gpt-5.1">GPT-5.1 - Mejor para codificación y tareas agénticas con esfuerzo de razonamiento configurable</option>
+                        <option value="gpt-5">GPT-5 - Modelo de razonamiento inteligente anterior para codificación y tareas agénticas</option>
+                        <option value="gpt-5-mini">GPT-5 mini - Versión más rápida y eficiente de GPT-5 para tareas bien definidas</option>
+                        <option value="gpt-5-nano">GPT-5 nano - Versión más rápida y eficiente de GPT-5</option>
+                    </optgroup>
+                    <optgroup label="Otros Modelos">
+                        <option value="o3">o3 - Modelo de razonamiento para tareas complejas, sucedido por GPT-5</option>
+                        <option value="gpt-4.1">GPT-4.1 - Modelo más inteligente sin razonamiento</option>
+                        <option value="o4-mini">o4-mini - Modelo de razonamiento rápido y eficiente, sucedido por GPT-5 mini</option>
+                        <option value="gpt-4.1-mini">GPT-4.1 mini - Versión más pequeña y rápida de GPT-4.1</option>
                     </optgroup>
                 </select>
-                <small>Select the GPT model to use for CV analysis</small>
+                <small>Selecciona el modelo GPT a usar para el análisis de CVs</small>
             </div>
 
             <div class="input-group">
-                <label for="jobDescription">Job Position Description:</label>
-                <textarea id="jobDescription" rows="5" placeholder="Enter the job position description, requirements, and context here..."></textarea>
+                <label for="jobDescription">Descripción del Puesto de Trabajo:</label>
+                <textarea id="jobDescription" rows="5" placeholder="Ingresa la descripción del puesto, requisitos y contexto aquí..."></textarea>
             </div>
 
             <div class="input-group config-box">
-                <label for="personalizedInstructions">⚙️ Personalized Instructions (Optional):</label>
-                <textarea id="personalizedInstructions" rows="4" placeholder="Example: Exclude candidates from X or Y school/company. Prioritize candidates with specific skills. Apply any custom filtering criteria..."></textarea>
-                <small>Add custom instructions for the AI analysis (e.g., exclude certain schools/companies, prioritize specific criteria)</small>
+                <label for="personalizedInstructions">⚙️ Instrucciones Personalizadas (Opcional):</label>
+                <textarea id="personalizedInstructions" rows="4" placeholder="Ejemplo: Excluir candidatos de X o Y escuela/empresa. Priorizar candidatos con habilidades específicas. Aplicar criterios de filtrado personalizados..."></textarea>
+                <small>Agrega instrucciones personalizadas para el análisis de IA (ej., excluir ciertas escuelas/empresas, priorizar criterios específicos)</small>
             </div>
 
             <div class="input-group config-box">
                 <div class="config-header" onclick="toggleCriteriaConfig()">
-                    <label>📊 Evaluation Criteria Configuration:</label>
+                    <label>📊 Configuración de Criterios de Evaluación:</label>
                     <span class="toggle-icon" id="criteriaToggleIcon">▼</span>
                 </div>
                 <div id="criteriaConfig" class="collapsible-content">
                     <div class="criterion-item">
-                        <input type="text" class="criterion-name" data-criterion="relevance" placeholder="Criterion Name" value="Profile Relevance to Position" />
-                        <textarea class="criterion-desc" data-criterion="relevance" placeholder="Criterion Description" rows="2">Compare the CV content with the job position context. Consider skills, experience, and overall fit.</textarea>
+                        <input type="text" class="criterion-name" data-criterion="relevance" placeholder="Nombre del Criterio" value="Relevancia del Perfil al Puesto" />
+                        <textarea class="criterion-desc" data-criterion="relevance" placeholder="Descripción del Criterio" rows="2">Compara el contenido del CV con el contexto del puesto de trabajo. Considera habilidades, experiencia y ajuste general.</textarea>
                     </div>
                     <div class="criterion-item">
-                        <input type="text" class="criterion-name" data-criterion="education" placeholder="Criterion Name" value="Education Level" />
-                        <textarea class="criterion-desc" data-criterion="education" placeholder="Criterion Description" rows="2">Evaluate the prestige of educational institutions. Main degree counts for 80% of the value, additional certifications, exchange programs, etc. count for 20%.</textarea>
+                        <input type="text" class="criterion-name" data-criterion="education" placeholder="Nombre del Criterio" value="Nivel Educativo" />
+                        <textarea class="criterion-desc" data-criterion="education" placeholder="Descripción del Criterio" rows="2">Evalúa el prestigio de las instituciones educativas. El título principal cuenta el 80% del valor, certificaciones adicionales, programas de intercambio, etc. cuentan el 20%.</textarea>
                     </div>
                     <div class="criterion-item">
-                        <input type="text" class="criterion-name" data-criterion="previousJobs" placeholder="Criterion Name" value="Previous Jobs" />
-                        <textarea class="criterion-desc" data-criterion="previousJobs" placeholder="Criterion Description" rows="2">Assess the prestige of previous employers and the level of the last position held.</textarea>
+                        <input type="text" class="criterion-name" data-criterion="previousJobs" placeholder="Nombre del Criterio" value="Trabajos Previos" />
+                        <textarea class="criterion-desc" data-criterion="previousJobs" placeholder="Descripción del Criterio" rows="2">Evalúa el prestigio de empleadores anteriores y el nivel del último puesto ocupado.</textarea>
                     </div>
                     <div class="criterion-item">
-                        <input type="text" class="criterion-name" data-criterion="proactivity" placeholder="Criterion Name" value="Proactivity" />
-                        <textarea class="criterion-desc" data-criterion="proactivity" placeholder="Criterion Description" rows="2">Evaluate extracurricular activities, certifications, continuous learning, and initiative shown beyond basic job requirements.</textarea>
+                        <input type="text" class="criterion-name" data-criterion="proactivity" placeholder="Nombre del Criterio" value="Proactividad" />
+                        <textarea class="criterion-desc" data-criterion="proactivity" placeholder="Descripción del Criterio" rows="2">Evalúa actividades extracurriculares, certificaciones, aprendizaje continuo e iniciativa mostrada más allá de los requisitos básicos del trabajo.</textarea>
                     </div>
                 </div>
-                <small>Customize the evaluation criteria names and descriptions</small>
+                <small>Personaliza los nombres y descripciones de los criterios de evaluación</small>
             </div>
 
             <div class="input-group">
-                <label for="cvFiles">Upload LinkedIn CVs (PDF):</label>
+                <label for="cvFiles">Subir CVs de LinkedIn (PDF):</label>
                 <input type="file" id="cvFiles" multiple accept=".pdf" />
-                <small>Select multiple PDF files to evaluate</small>
+                <small>Selecciona múltiples archivos PDF para evaluar</small>
             </div>
 
-            <button id="analyzeBtn" class="btn-primary" disabled>Analyze CVs</button>
+            <button id="analyzeBtn" class="btn-primary" disabled>Analizar CVs</button>
         </div>
 
         <div id="loadingSection" class="loading-section hidden">
             <div class="spinner"></div>
-            <p id="loadingText">Processing CVs...</p>
+            <p id="loadingText">Procesando CVs...</p>
             <div id="progressBar" class="progress-bar">
                 <div id="progressFill" class="progress-fill"></div>
             </div>
@@ -100,40 +102,40 @@
             <div class="results-layout">
                 <div class="sidebar">
                     <div class="sidebar-header">
-                        <h3>All CVs</h3>
+                        <h3>Todos los CVs</h3>
                         <div class="sort-controls">
-                            <label>Sort:</label>
+                            <label>Ordenar:</label>
                             <select id="sortBy">
-                                <option value="total">Total Score</option>
-                                <option value="relevance">Relevance</option>
-                                <option value="education">Education</option>
-                                <option value="jobs">Jobs</option>
-                                <option value="proactivity">Proactivity</option>
+                                <option value="total">Puntuación Total</option>
+                                <option value="relevance">Relevancia</option>
+                                <option value="education">Educación</option>
+                                <option value="jobs">Trabajos</option>
+                                <option value="proactivity">Proactividad</option>
                             </select>
                         </div>
                     </div>
                     <div class="sidebar-search">
-                        <input type="text" id="searchCVs" placeholder="Search CVs..." />
+                        <input type="text" id="searchCVs" placeholder="Buscar CVs..." />
                     </div>
                     <div class="sidebar-list" id="sidebarList">
                         <!-- CV list items will be inserted here -->
                     </div>
                     <div class="sidebar-footer">
                         <div class="selection-info">
-                            <span id="selectedCount">0</span> selected (max 10)
+                            <span id="selectedCount">0</span> seleccionados (máx. 10)
                         </div>
-                        <button id="clearSelection" class="btn-clear">Clear Selection</button>
+                        <button id="clearSelection" class="btn-clear">Limpiar Selección</button>
                     </div>
                 </div>
                 <div class="main-content">
                     <div class="main-header">
-                        <h2>Selected CVs</h2>
-                        <div class="selected-count-badge" id="selectedBadge">0 selected</div>
+                        <h2>CVs Seleccionados</h2>
+                        <div class="selected-count-badge" id="selectedBadge">0 seleccionados</div>
                     </div>
                     <div id="selectedGallery" class="selected-gallery">
                         <div class="empty-state">
-                            <p>Select CVs from the sidebar to view detailed analysis</p>
-                            <small>You can select up to 10 CVs at a time</small>
+                            <p>Selecciona CVs de la barra lateral para ver el análisis detallado</p>
+                            <small>Puedes seleccionar hasta 10 CVs a la vez</small>
                         </div>
                     </div>
                 </div>
@@ -142,43 +144,43 @@
 
         <div id="interviewQuestionsSection" class="interview-questions-section hidden">
             <div class="section-header">
-                <h3>📝 Interview Questions Generator</h3>
+                <h3>📝 Generador de Preguntas de Entrevista</h3>
                 <button id="closeInterviewSection" class="btn-close-section">×</button>
             </div>
             <div class="interview-controls">
                 <div class="input-group-inline">
-                    <label for="numQuestions">Number of Questions per CV:</label>
+                    <label for="numQuestions">Número de Preguntas por CV:</label>
                     <input type="number" id="numQuestions" min="1" max="20" value="5" />
                 </div>
-                <button id="generateQuestionsBtn" class="btn-secondary">Generate Questions</button>
+                <button id="generateQuestionsBtn" class="btn-secondary">Generar Preguntas</button>
             </div>
             <div id="interviewQuestions" class="interview-questions-list"></div>
         </div>
 
         <div id="chatSection" class="chat-section hidden">
             <div class="chat-header">
-                <h3>💬 Ask Questions About CVs</h3>
+                <h3>💬 Haz Preguntas sobre los CVs</h3>
                 <button id="toggleChat" class="btn-toggle-chat">−</button>
             </div>
             <div class="chat-body">
                 <div class="chat-cv-selector">
-                    <label>Select CVs to use as context:</label>
+                    <label>Selecciona CVs para usar como contexto:</label>
                     <div class="chat-dropdown-container">
                         <div class="chat-dropdown-header" onclick="toggleChatDropdown()">
-                            <span id="chatDropdownText">Select CVs...</span>
+                            <span id="chatDropdownText">Seleccionar CVs...</span>
                             <span class="dropdown-arrow">▼</span>
                         </div>
                         <div id="chatDropdown" class="chat-dropdown hidden">
-                            <input type="text" id="chatCVSearch" placeholder="Search CVs..." class="chat-search-input" />
+                            <input type="text" id="chatCVSearch" placeholder="Buscar CVs..." class="chat-search-input" />
                             <div id="chatCVList" class="chat-cv-list"></div>
                         </div>
                     </div>
-                    <small>Select one or more CVs to ask questions about</small>
+                    <small>Selecciona uno o más CVs para hacer preguntas</small>
                 </div>
                 <div id="chatMessages" class="chat-messages"></div>
                 <div class="chat-input-container">
-                    <input type="text" id="chatInput" placeholder="Ask a question about the selected CVs..." />
-                    <button id="sendChatBtn" class="btn-send-chat">Send</button>
+                    <input type="text" id="chatInput" placeholder="Haz una pregunta sobre los CVs seleccionados..." />
+                    <button id="sendChatBtn" class="btn-send-chat">Enviar</button>
                 </div>
             </div>
         </div>

@@ -1167,9 +1167,21 @@ header h1 {
     background: #fee;
     border: 2px solid #fcc;
     border-radius: 8px;
-    padding: 15px;
+    padding: 20px;
     color: #c33;
     margin-top: 20px;
+    font-size: 1em;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-width: 100%;
+    box-shadow: 0 2px 8px rgba(204, 51, 51, 0.2);
+}
+
+.error-section strong {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.1em;
 }
 
 /* CV Preview Modal */
@@ -1339,7 +1351,8 @@ header h1 {
     flex-wrap: wrap;
 }
 
-.btn-download-pdf {
+.btn-download-pdf,
+.btn-open-pdf {
     padding: 10px 20px;
     background: #0066ff;
     color: white;
@@ -1350,11 +1363,14 @@ header h1 {
     transition: all 0.2s;
     text-decoration: none;
     display: inline-block;
+    font-size: 0.95em;
 }
 
-.btn-download-pdf:hover {
+.btn-download-pdf:hover,
+.btn-open-pdf:hover {
     background: #0052cc;
     transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 102, 255, 0.3);
 }
 
 .pdf-fallback a,
