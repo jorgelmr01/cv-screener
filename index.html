@@ -53,6 +53,32 @@
                 <small>Add custom instructions for the AI analysis (e.g., exclude certain schools/companies, prioritize specific criteria)</small>
             </div>
 
+            <div class="input-group config-box">
+                <div class="config-header" onclick="toggleCriteriaConfig()">
+                    <label>📊 Evaluation Criteria Configuration:</label>
+                    <span class="toggle-icon" id="criteriaToggleIcon">▼</span>
+                </div>
+                <div id="criteriaConfig" class="collapsible-content">
+                    <div class="criterion-item">
+                        <input type="text" class="criterion-name" data-criterion="relevance" placeholder="Criterion Name" value="Profile Relevance to Position" />
+                        <textarea class="criterion-desc" data-criterion="relevance" placeholder="Criterion Description" rows="2">Compare the CV content with the job position context. Consider skills, experience, and overall fit.</textarea>
+                    </div>
+                    <div class="criterion-item">
+                        <input type="text" class="criterion-name" data-criterion="education" placeholder="Criterion Name" value="Education Level" />
+                        <textarea class="criterion-desc" data-criterion="education" placeholder="Criterion Description" rows="2">Evaluate the prestige of educational institutions. Main degree counts for 80% of the value, additional certifications, exchange programs, etc. count for 20%.</textarea>
+                    </div>
+                    <div class="criterion-item">
+                        <input type="text" class="criterion-name" data-criterion="previousJobs" placeholder="Criterion Name" value="Previous Jobs" />
+                        <textarea class="criterion-desc" data-criterion="previousJobs" placeholder="Criterion Description" rows="2">Assess the prestige of previous employers and the level of the last position held.</textarea>
+                    </div>
+                    <div class="criterion-item">
+                        <input type="text" class="criterion-name" data-criterion="proactivity" placeholder="Criterion Name" value="Proactivity" />
+                        <textarea class="criterion-desc" data-criterion="proactivity" placeholder="Criterion Description" rows="2">Evaluate extracurricular activities, certifications, continuous learning, and initiative shown beyond basic job requirements.</textarea>
+                    </div>
+                </div>
+                <small>Customize the evaluation criteria names and descriptions</small>
+            </div>
+
             <div class="input-group">
                 <label for="cvFiles">Upload LinkedIn CVs (PDF):</label>
                 <input type="file" id="cvFiles" multiple accept=".pdf" />
@@ -113,6 +139,51 @@
                 </div>
             </div>
         </div>
+
+        <div id="interviewQuestionsSection" class="interview-questions-section hidden">
+            <div class="section-header">
+                <h3>📝 Interview Questions Generator</h3>
+                <button id="closeInterviewSection" class="btn-close-section">×</button>
+            </div>
+            <div class="interview-controls">
+                <div class="input-group-inline">
+                    <label for="numQuestions">Number of Questions per CV:</label>
+                    <input type="number" id="numQuestions" min="1" max="20" value="5" />
+                </div>
+                <button id="generateQuestionsBtn" class="btn-secondary">Generate Questions</button>
+            </div>
+            <div id="interviewQuestions" class="interview-questions-list"></div>
+        </div>
+
+        <div id="chatSection" class="chat-section hidden">
+            <div class="chat-header">
+                <h3>💬 Ask Questions About CVs</h3>
+                <button id="toggleChat" class="btn-toggle-chat">−</button>
+            </div>
+            <div class="chat-body">
+                <div class="chat-cv-selector">
+                    <label>Select CVs to use as context:</label>
+                    <div class="chat-dropdown-container">
+                        <div class="chat-dropdown-header" onclick="toggleChatDropdown()">
+                            <span id="chatDropdownText">Select CVs...</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </div>
+                        <div id="chatDropdown" class="chat-dropdown hidden">
+                            <input type="text" id="chatCVSearch" placeholder="Search CVs..." class="chat-search-input" />
+                            <div id="chatCVList" class="chat-cv-list"></div>
+                        </div>
+                    </div>
+                    <small>Select one or more CVs to ask questions about</small>
+                </div>
+                <div id="chatMessages" class="chat-messages"></div>
+                <div class="chat-input-container">
+                    <input type="text" id="chatInput" placeholder="Ask a question about the selected CVs..." />
+                    <button id="sendChatBtn" class="btn-send-chat">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="openChatBtn" class="btn-open-chat hidden">💬 Chat</button>
 
         <div id="errorSection" class="error-section hidden"></div>
     </div>
