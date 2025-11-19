@@ -18,14 +18,32 @@ let evaluationCriteria = {
 let chatHistory = [];
 let chatCVSelection = new Set();
 
-// Helper function to determine the correct token parameter for a model
-function getTokenParameter(model, tokenCount) {
-    // GPT-5 family models require max_completion_tokens instead of max_tokens
+// Helper function to get model-specific API parameters
+function getModelParameters(model, tokenCount, defaultTemperature) {
     const gpt5Models = ['gpt-5.1', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano'];
+    const params = {};
+    
+    // Token parameter: GPT-5 uses max_completion_tokens, others use max_tokens
     if (gpt5Models.includes(model)) {
-        return { max_completion_tokens: tokenCount };
+        params.max_completion_tokens = tokenCount;
+    } else {
+        params.max_tokens = tokenCount;
     }
-    return { max_tokens: tokenCount };
+    
+    // Temperature handling:
+    // - gpt-5-nano: Only supports default value (1), don't set temperature parameter
+    // - Other GPT-5 models (gpt-5.1, gpt-5, gpt-5-mini): May have restrictions
+    //   Based on API errors, we'll not set temperature for any GPT-5 models to be safe
+    // - Standard models (GPT-4, o3, o4-mini, etc.): Support temperature normally
+    if (gpt5Models.includes(model)) {
+        // Don't set temperature for any GPT-5 models - they use default (1)
+        // This avoids API errors about unsupported temperature values
+    } else {
+        // Standard models (GPT-4 family, o3, o4-mini, etc.) support temperature
+        params.temperature = defaultTemperature;
+    }
+    
+    return params;
 }
 
 // Load saved API key and criteria from localStorage
@@ -524,8 +542,7 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown, s
                         content: prompt
                     }
                 ],
-                temperature: 0.3,
-                ...getTokenParameter(selectedModel, 1000)
+                ...getModelParameters(selectedModel, 1000, 0.3)
             })
         });
 
@@ -1168,8 +1185,7 @@ Devuelve SOLO un array JSON de objetos de pregunta en este formato (sin markdown
                             content: prompt
                         }
                     ],
-                    temperature: 0.7,
-                    ...getTokenParameter(selectedModel, 2000)
+                    ...getModelParameters(selectedModel, 2000, 0.7)
                 })
             });
 
@@ -1403,8 +1419,7 @@ Proporciona una respuesta útil y detallada basada en la información del CV. S�
                         content: prompt
                     }
                 ],
-                temperature: 0.7,
-                ...getTokenParameter(selectedModel, 1500)
+                ...getModelParameters(selectedModel, 1500, 0.7)
             })
         });
 
