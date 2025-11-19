@@ -18,6 +18,16 @@ let evaluationCriteria = {
 let chatHistory = [];
 let chatCVSelection = new Set();
 
+// Helper function to determine the correct token parameter for a model
+function getTokenParameter(model, tokenCount) {
+    // GPT-5 family models require max_completion_tokens instead of max_tokens
+    const gpt5Models = ['gpt-5.1', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano'];
+    if (gpt5Models.includes(model)) {
+        return { max_completion_tokens: tokenCount };
+    }
+    return { max_tokens: tokenCount };
+}
+
 // Load saved API key and criteria from localStorage
 window.addEventListener('DOMContentLoaded', () => {
     const savedApiKey = localStorage.getItem('cvScreenerApiKey');
@@ -515,7 +525,7 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown, s
                     }
                 ],
                 temperature: 0.3,
-                max_tokens: 1000
+                ...getTokenParameter(selectedModel, 1000)
             })
         });
 
@@ -1159,7 +1169,7 @@ Devuelve SOLO un array JSON de objetos de pregunta en este formato (sin markdown
                         }
                     ],
                     temperature: 0.7,
-                    max_tokens: 2000
+                    ...getTokenParameter(selectedModel, 2000)
                 })
             });
 
@@ -1394,7 +1404,7 @@ Proporciona una respuesta útil y detallada basada en la información del CV. S�
                     }
                 ],
                 temperature: 0.7,
-                max_tokens: 1500
+                ...getTokenParameter(selectedModel, 1500)
             })
         });
 
