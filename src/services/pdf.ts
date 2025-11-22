@@ -1,7 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set worker source
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+// We assume the worker is copied to the root of the dist folder
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.mjs';
 
 export interface PDFData {
     text: string;

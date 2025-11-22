@@ -1,32 +1,15 @@
-# INSTRUCCIONES PARA VERSION PORTABLE (SIN INSTALACION)
+# CV SCREENER - VERSION 100% LOCAL
 
-Esta version esta diseñada para ejecutarse en computadoras donde no se puede instalar software (como Node.js).
-
-## Pasos de Preparacion (Solo una vez)
-
-1.  Descarga el ejecutable de Node.js (version portable) desde este enlace oficial:
-    
-    https://nodejs.org/dist/latest-v20.x/win-x64/node.exe
-
-    (Si el enlace no funciona, busca "Node.js Windows Binary .exe" en Google).
-
-2.  Guarda el archivo `node.exe` descargado en ESTA MISMA CARPETA (junto a INICIAR_PORTABLE.bat) o dentro de una carpeta `bin`.
-
-   La estructura puede ser asi:
-   CV Screener/
-   ├── node.exe  <-- Opcion mas facil
-   ├── dist/
-   ├── portable-server.cjs
-   └── INICIAR_PORTABLE.bat
+Esta version funciona directamente en tu navegador, sin instalar NADA.
 
 ## Como Iniciar
 
-1.  Haz doble clic en `INICIAR_PORTABLE.bat`.
-2.  Se abrira una ventana negra (el servidor) y tu navegador web.
-3.  ¡Listo!
+1.  Haz doble clic en `INICIAR_SIN_INSTALACION.bat`.
+2.  Se abrira la aplicacion en tu navegador.
 
-## Notas
+## Notas Importantes
 
-*   Esta version NO requiere instalar nada en Windows.
-*   Todo corre desde la carpeta.
-*   Puedes copiar toda la carpeta (incluyendo `bin`) a una USB y funcionara en otra PC.
+*   **NO requiere Internet** (excepto para conectar con OpenAI).
+*   **NO requiere permisos de Administrador**.
+*   **NO requiere instalar Node.js**.
+*   Tus datos se guardan en tu navegador. Si borras el historial/cookies, podrias perder tus datos (usa la opcion de Exportar cuando este disponible).
