@@ -60,5 +60,5 @@ echo.
 start http://localhost:5173
 
 :: Start server using portable node
-"%NODE_EXE%" portable-server.js
+"%NODE_EXE%" portable-server.cjs
 if %errorlevel% neq 0 pause

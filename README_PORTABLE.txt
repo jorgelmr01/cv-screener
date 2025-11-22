@@ -16,7 +16,7 @@ Esta version esta diseñada para ejecutarse en computadoras donde no se puede in
    CV Screener/
    ├── node.exe  <-- Opcion mas facil
    ├── dist/
-   ├── portable-server.js
+   ├── portable-server.cjs
    └── INICIAR_PORTABLE.bat
 
 ## Como Iniciar
