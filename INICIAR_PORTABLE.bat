@@ -5,26 +5,52 @@ echo        Iniciando CV Screener (Portable)
 echo ==========================================
 echo.
 
-:: Define path to portable node (check bin folder first, then root)
-set "NODE_EXE=%~dp0bin\node.exe"
-if not exist "%NODE_EXE%" (
-    set "NODE_EXE=%~dp0node.exe"
+set "ROOT_DIR=%~dp0"
+set "BIN_DIR=%~dp0bin"
+
+echo Buscando node.exe en:
+echo 1. "%BIN_DIR%\node.exe"
+echo 2. "%ROOT_DIR%node.exe"
+echo.
+
+:: Check bin/node.exe
+if exist "%BIN_DIR%\node.exe" (
+    set "NODE_EXE=%BIN_DIR%\node.exe"
+    goto :FOUND
 )
 
-:: Check if portable node exists
-if not exist "%NODE_EXE%" (
-    echo ERROR: No se encontro 'node.exe'.
-    echo.
-    echo Por favor descarga el binario de Node.js "node.exe" y colocalo en:
-    echo   1. Una carpeta llamada 'bin' (recomendado)
-    echo   2. O en esta misma carpeta
-    echo.
-    echo Puedes descargarlo aqui: https://nodejs.org/dist/latest-v20.x/win-x64/node.exe
-    echo.
-    pause
-    exit
+:: Check root/node.exe
+if exist "%ROOT_DIR%node.exe" (
+    set "NODE_EXE=%ROOT_DIR%node.exe"
+    goto :FOUND
 )
 
+:: Check for common mistake: node.exe.exe (double extension)
+if exist "%ROOT_DIR%node.exe.exe" (
+    set "NODE_EXE=%ROOT_DIR%node.exe.exe"
+    goto :FOUND
+)
+
+:NOT_FOUND
+echo ERROR: No se encontro 'node.exe'.
+echo.
+echo --- DIAGNOSTICO ---
+echo Archivos .exe encontrados en esta carpeta:
+dir /b /a-d "*.exe" 2>nul
+if errorlevel 1 echo (Ninguno)
+echo.
+echo Archivos en carpeta bin:
+if exist "%BIN_DIR%" ( dir /b "%BIN_DIR%\*.exe" 2>nul ) else ( echo (Carpeta bin no existe) )
+echo -------------------
+echo.
+echo Por favor asegurate de que el archivo se llame EXACTAMENTE "node.exe".
+echo Si Windows oculta las extensiones, puede que veas solo "node" (tipo Aplicacion).
+echo.
+pause
+exit
+
+:FOUND
+echo Node encontrado: "%NODE_EXE%"
 echo Iniciando servidor local...
 echo.
 echo NOTA: No cierres esta ventana mientras uses la aplicacion.
