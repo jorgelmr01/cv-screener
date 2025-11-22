@@ -30,15 +30,26 @@ export function UploadZone() {
 
         setIsProcessing(true);
         setError(null);
-        let successCount = 0;
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (file.type !== 'application/pdf') continue;
+        const totalFiles = files.length;
+        let processedCount = 0;
 
-            setProgress({ current: i + 1, total: files.length, filename: file.name });
+        // Filter for PDFs first
+        const pdfFiles = files.filter(f => f.type === 'application/pdf');
 
+        if (pdfFiles.length === 0) {
+            setIsProcessing(false);
+            return;
+        }
+
+        // Concurrency limit
+        const CONCURRENCY_LIMIT = 3;
+        const results: { success: boolean; file: string; error?: string }[] = [];
+
+        const processOneFile = async (file: File) => {
             try {
+                setProgress({ current: processedCount + 1, total: totalFiles, filename: file.name });
+
                 // 1. Extract Text
                 const pdfData = await extractTextFromPDF(file);
                 const contactInfo = extractContactInfo(pdfData.text);
@@ -81,11 +92,26 @@ export function UploadZone() {
                     updatedAt: new Date().toISOString()
                 });
 
-                successCount++;
+                results.push({ success: true, file: file.name });
             } catch (err) {
                 console.error(`Error processing ${file.name}:`, err);
-                setError(`Error al procesar ${file.name}: ${(err as Error).message}`);
+                results.push({ success: false, file: file.name, error: (err as Error).message });
+            } finally {
+                processedCount++;
+                setProgress({ current: processedCount, total: totalFiles, filename: "Procesando..." });
             }
+        };
+
+        // Process files in batches with concurrency limit
+        for (let i = 0; i < pdfFiles.length; i += CONCURRENCY_LIMIT) {
+            const batch = pdfFiles.slice(i, i + CONCURRENCY_LIMIT);
+            await Promise.all(batch.map(file => processOneFile(file)));
+        }
+
+        // Check for errors
+        const errors = results.filter(r => !r.success);
+        if (errors.length > 0) {
+            setError(`Hubo errores en ${errors.length} archivos. Revisa la consola para más detalles.`);
         }
 
         setIsProcessing(false);

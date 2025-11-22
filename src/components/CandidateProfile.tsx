@@ -307,7 +307,7 @@ export function CandidateProfile({ candidate: initialCandidate, onClose }: Candi
                             <div className="flex-1 relative bg-gray-100 dark:bg-gray-900">
                                 {pdfObjectUrl ? (
                                     <object
-                                        data={pdfObjectUrl}
+                                        data={`${pdfObjectUrl}#toolbar=0&navpanes=0&scrollbar=0`}
                                         type="application/pdf"
                                         className="absolute inset-0 w-full h-full"
                                     >

@@ -1,8 +1,14 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set worker source
-// We assume the worker is copied to the root of the dist folder
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.mjs';
+// Import worker as raw string to bundle it
+import workerCode from 'pdfjs-dist/build/pdf.worker.min.mjs?raw';
+
+// Create a Blob from the worker code
+const blob = new Blob([workerCode], { type: 'application/javascript' });
+const workerUrl = URL.createObjectURL(blob);
+
+// Set worker source to the Blob URL
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export interface PDFData {
     text: string;

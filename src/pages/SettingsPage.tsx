@@ -90,6 +90,10 @@ export function SettingsPage() {
                             onChange={(e) => setSettings({ ...settings, selectedModel: e.target.value })}
                             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
+                            <option value="gpt-5.1">GPT-5.1</option>
+                            <option value="gpt-5">GPT-5</option>
+                            <option value="gpt-5-mini">GPT-5 Mini</option>
+                            <option value="gpt-5-nano">GPT-5 Nano</option>
                             <option value="gpt-4o">GPT-4o</option>
                             <option value="gpt-4o-mini">GPT-4o Mini</option>
                             <option value="gpt-4-turbo">GPT-4 Turbo</option>
