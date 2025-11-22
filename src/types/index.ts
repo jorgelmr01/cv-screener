@@ -93,4 +93,5 @@ export interface AppSettings {
     selectedModel: string;
     theme: 'light' | 'dark';
     defaultEvaluationCriteria?: Record<string, EvaluationCriteria>;
+    criteriaPresets?: Record<string, Record<string, EvaluationCriteria>>;
 }

@@ -85,10 +85,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // Use default criteria from settings if available, otherwise use hardcoded defaults
         const evaluationCriteria = settings.defaultEvaluationCriteria || {
-            relevance: { name: 'Relevancia', desc: '¿Qué tan relevante es el perfil para el puesto?' },
-            education: { name: 'Educación', desc: '¿Cumple con los requisitos educativos?' },
-            previousJobs: { name: 'Experiencia', desc: '¿Tiene experiencia relevante en puestos similares?' },
-            proactivity: { name: 'Proactividad', desc: '¿Muestra signos de proactividad y logros?' }
+            relevance: { name: 'Relevancia del Perfil al Puesto', desc: 'Compara el contenido del CV con el contexto del puesto de trabajo. Considera habilidades, experiencia y ajuste general.' },
+            education: { name: 'Nivel Educativo', desc: 'Evalúa el prestigio de las instituciones educativas. El título principal cuenta el 80% del valor, certificaciones adicionales, programas de intercambio, etc. cuentan el 20%.' },
+            previousJobs: { name: 'Trabajos Previos', desc: 'Evalúa el prestigio de empleadores anteriores y del nivel del último puesto ocupado.' },
+            proactivity: { name: 'Proactividad', desc: 'Evalúa actividades extracurriculares, certificaciones, aprendizaje continuo e iniciativa mostrada más allá de los requisitos básicos del trabajo.' }
         };
 
         const newSearch: Search = {
