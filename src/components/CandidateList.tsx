@@ -5,11 +5,12 @@ import { useAppStore } from '../store/useAppStore';
 import { exportCandidatesToCSV } from '../utils/export';
 
 interface CandidateListProps {
+    candidates: Candidate[];
     onSelectCandidate: (candidate: Candidate) => void;
 }
 
-export function CandidateList({ onSelectCandidate }: CandidateListProps) {
-    const { candidates, deleteCandidate, toggleFavorite } = useAppStore();
+export function CandidateList({ candidates, onSelectCandidate }: CandidateListProps) {
+    const { deleteCandidate, toggleFavorite } = useAppStore();
 
     const handleDelete = (e: MouseEvent, id: string) => {
         e.stopPropagation();
