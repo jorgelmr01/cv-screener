@@ -22,6 +22,7 @@ interface AppState {
     createSearch: (search: Omit<Search, 'id' | 'createdAt' | 'updatedAt'>) => Promise<number>;
     selectSearch: (id: number) => Promise<void>;
     updateSearch: (search: Search) => Promise<void>;
+    deleteSearch: (id: number) => Promise<void>;
 
     // Candidate Actions
     addCandidate: (candidate: Candidate) => Promise<void>;
@@ -136,6 +137,28 @@ export const useAppStore = create<AppState>((set, get) => ({
             searches: state.searches.map(s => s.id === search.id ? updatedSearch : s),
             currentSearch: state.currentSearch?.id === search.id ? updatedSearch : state.currentSearch
         }));
+    },
+
+    deleteSearch: async (id) => {
+        // Delete all candidates associated with this search
+        const candidates = await db.getCandidatesBySearch(id);
+        await Promise.all(candidates.map(c => db.deleteCandidate(c.id)));
+        
+        // Delete the search itself
+        await db.deleteSearch(id);
+        
+        // Update state
+        set(state => ({
+            searches: state.searches.filter(s => s.id !== id),
+            currentSearch: state.currentSearch?.id === id ? null : state.currentSearch,
+            candidates: state.currentSearch?.id === id ? [] : state.candidates
+        }));
+        
+        // Clear from localStorage if it was the active search
+        const lastSearchId = localStorage.getItem('lastSearchId');
+        if (lastSearchId && parseInt(lastSearchId) === id) {
+            localStorage.removeItem('lastSearchId');
+        }
     },
 
     addCandidate: async (candidate) => {

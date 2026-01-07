@@ -3,9 +3,56 @@
 
 <head>
   <meta charset="UTF-8" />
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CV Screener</title>
+  <!-- Prevent theme flash by applying theme before render -->
+  <script>
+    (function() {
+      try {
+        var settings = localStorage.getItem('cv-screener-theme');
+        if (!settings) {
+          // Try to get from IndexedDB settings (fallback to light)
+          var stored = localStorage.getItem('app-settings');
+          if (stored) {
+            var parsed = JSON.parse(stored);
+            settings = parsed.theme;
+          }
+        }
+        if (settings === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    /* Initial loading state */
+    #root:empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #f9fafb;
+    }
+    #root:empty::after {
+      content: '';
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .dark #root:empty {
+      background: #111827;
+    }
+    .dark #root:empty::after {
+      border-color: #374151;
+      border-top-color: #3b82f6;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 
 <body>

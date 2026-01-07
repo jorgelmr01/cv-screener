@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, Plus, Trash2, Download } from 'lucide-react';
+import { Save, Plus, Trash2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export function SettingsPage() {
@@ -7,6 +7,7 @@ export function SettingsPage() {
     const [apiKey, setApiKey] = useState(settings.apiKey);
     const [isSaved, setIsSaved] = useState(false);
     const [presetName, setPresetName] = useState('');
+    const [selectedPreset, setSelectedPreset] = useState('');
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -111,7 +112,10 @@ export function SettingsPage() {
                         <div className="flex items-center gap-4">
                             <button
                                 type="button"
-                                onClick={() => setSettings({ ...settings, theme: 'light' })}
+                                onClick={() => {
+                                    localStorage.setItem('cv-screener-theme', 'light');
+                                    setSettings({ ...settings, theme: 'light' });
+                                }}
                                 className={`flex-1 py-3 px-4 rounded-lg border flex items-center justify-center gap-2 transition-all ${settings.theme === 'light'
                                     ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500 dark:bg-blue-900/30 dark:text-blue-300'
                                     : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -122,7 +126,10 @@ export function SettingsPage() {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setSettings({ ...settings, theme: 'dark' })}
+                                onClick={() => {
+                                    localStorage.setItem('cv-screener-theme', 'dark');
+                                    setSettings({ ...settings, theme: 'dark' });
+                                }}
                                 className={`flex-1 py-3 px-4 rounded-lg border flex items-center justify-center gap-2 transition-all ${settings.theme === 'dark'
                                     ? 'border-blue-500 bg-blue-900 text-white ring-1 ring-blue-500'
                                     : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -157,6 +164,75 @@ export function SettingsPage() {
                             >
                                 Restaurar Recomendados
                             </button>
+                        </div>
+
+                        {/* Presets Section - Above criteria */}
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Presets de Criterios</h4>
+                            
+                            {/* Load Preset Dropdown */}
+                            <div className="flex gap-2 mb-3">
+                                <select
+                                    value={selectedPreset}
+                                    onChange={(e) => setSelectedPreset(e.target.value)}
+                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                >
+                                    <option value="">Seleccionar preset...</option>
+                                    {settings.criteriaPresets && Object.keys(settings.criteriaPresets).map((name) => (
+                                        <option key={name} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (selectedPreset) {
+                                            handleLoadPreset(selectedPreset);
+                                        }
+                                    }}
+                                    disabled={!selectedPreset}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+                                >
+                                    Cargar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (selectedPreset) {
+                                            handleDeletePreset(selectedPreset);
+                                            setSelectedPreset('');
+                                        }
+                                    }}
+                                    disabled={!selectedPreset}
+                                    className="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+                                    title="Eliminar preset seleccionado"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+
+                            {/* Save New Preset */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={presetName}
+                                    onChange={(e) => setPresetName(e.target.value)}
+                                    placeholder="Nombre para guardar preset actual..."
+                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleSavePreset}
+                                    disabled={!presetName.trim()}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Plus size={16} />
+                                    Guardar
+                                </button>
+                            </div>
+                            
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                Guarda los criterios actuales como preset para reutilizarlos después.
+                            </p>
                         </div>
 
                         <div className="space-y-4">
@@ -217,59 +293,6 @@ export function SettingsPage() {
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                             Nota: Por ahora solo se pueden editar los criterios existentes. La capacidad de agregar/eliminar criterios se añadirá pronto.
                         </p>
-
-                        {/* Presets Section */}
-                        <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
-                            <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">Presets de Criterios</h4>
-
-                            <div className="flex gap-2 mb-4">
-                                <input
-                                    type="text"
-                                    value={presetName}
-                                    onChange={(e) => setPresetName(e.target.value)}
-                                    placeholder="Nombre del nuevo preset..."
-                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleSavePreset}
-                                    disabled={!presetName.trim()}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium flex items-center gap-2"
-                                >
-                                    <Plus size={16} />
-                                    Guardar Preset
-                                </button>
-                            </div>
-
-                            {settings.criteriaPresets && Object.keys(settings.criteriaPresets).length > 0 && (
-                                <div className="space-y-2">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Presets Guardados:</p>
-                                    {Object.keys(settings.criteriaPresets).map((name) => (
-                                        <div key={name} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600">
-                                            <span className="font-medium text-gray-700 dark:text-gray-300">{name}</span>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleLoadPreset(name)}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                                                    title="Cargar este preset"
-                                                >
-                                                    <Download size={16} />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeletePreset(name)}
-                                                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                                                    title="Eliminar preset"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-4">
