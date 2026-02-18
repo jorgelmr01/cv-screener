@@ -3,13 +3,17 @@ import { FileText, Trash2, Star, Download } from 'lucide-react';
 import { Candidate } from '../types';
 import { useAppStore } from '../store/useAppStore';
 import { exportCandidatesToCSV } from '../utils/export';
+import { getStageLabel, getStageBadgeClasses } from '../types/pipeline';
 
 interface CandidateListProps {
     candidates: Candidate[];
     onSelectCandidate: (candidate: Candidate) => void;
+    selectedIds?: Set<string>;
+    onToggleSelect?: (id: string) => void;
+    onSelectAll?: () => void;
 }
 
-export function CandidateList({ candidates, onSelectCandidate }: CandidateListProps) {
+export function CandidateList({ candidates, onSelectCandidate, selectedIds, onToggleSelect, onSelectAll }: CandidateListProps) {
     const { deleteCandidate, toggleFavorite } = useAppStore();
 
     const handleDelete = (e: MouseEvent, id: string) => {
@@ -54,10 +58,21 @@ export function CandidateList({ candidates, onSelectCandidate }: CandidateListPr
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700/50">
                         <tr>
+                            {onToggleSelect && (
+                                <th className="px-4 py-3 w-10">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds?.size === candidates.length && candidates.length > 0}
+                                        onChange={onSelectAll}
+                                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                                    />
+                                </th>
+                            )}
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10"></th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Candidato</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Score</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tags</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
@@ -66,8 +81,20 @@ export function CandidateList({ candidates, onSelectCandidate }: CandidateListPr
                             <tr
                                 key={candidate.id}
                                 onClick={() => onSelectCandidate(candidate)}
-                                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                                className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors ${
+                                    selectedIds?.has(candidate.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                }`}
                             >
+                                {onToggleSelect && (
+                                    <td className="px-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds?.has(candidate.id) || false}
+                                            onChange={() => onToggleSelect(candidate.id)}
+                                            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                                        />
+                                    </td>
+                                )}
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <button
                                         onClick={(e) => handleToggleFavorite(e, candidate.id)}
@@ -102,9 +129,21 @@ export function CandidateList({ candidates, onSelectCandidate }: CandidateListPr
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                                        {candidate.status}
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStageBadgeClasses(candidate.status)}`}>
+                                        {getStageLabel(candidate.status)}
                                     </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex flex-wrap gap-1">
+                                        {candidate.tags?.slice(0, 3).map(tag => (
+                                            <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                        {(candidate.tags?.length || 0) > 3 && (
+                                            <span className="text-xs text-gray-400">+{(candidate.tags?.length || 0) - 3}</span>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <button

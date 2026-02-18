@@ -1,248 +1,207 @@
-import { useState, useRef, useEffect, FormEvent } from 'react';
-import { Send, User, Bot, MessageSquare } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Send, Users, Sparkles, Star } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { chatWithCandidates } from '../services/openai';
+import { Candidate, ChatMessage } from '../types';
+import ReactMarkdown from 'react-markdown';
 
-interface Message {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: Date;
-}
+const QUICK_PROMPTS = [
+    { label: 'Comparar top 3', prompt: 'Compara los 3 mejores candidatos y recomienda cuál es el más adecuado para el puesto.' },
+    { label: 'Resumen general', prompt: 'Haz un resumen de todos los candidatos seleccionados, destacando fortalezas y debilidades principales.' },
+    { label: 'Priorizar entrevistas', prompt: '¿A quién deberíamos entrevistar primero y por qué? Ordena por prioridad.' },
+    { label: 'Red flags', prompt: 'Identifica posibles red flags o puntos de preocupación en los candidatos seleccionados.' },
+];
 
 export function ChatView() {
-    const { candidates, settings } = useAppStore();
-    const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
-    const [messages, setMessages] = useState<Message[]>([]);
+    const { candidates, settings, currentSearch, chatMessages, addChatMessage } = useAppStore();
+    const [selectedCandidates, setSelectedCandidates] = useState<Candidate[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [sortOrder, setSortOrder] = useState<'score' | 'name'>('score');
+    const [sidebarFilter, setSidebarFilter] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    const messages = useMemo(() => {
+        if (!currentSearch) return [];
+        return chatMessages.filter(m => m.searchId === currentSearch.id);
+    }, [chatMessages, currentSearch]);
 
     useEffect(() => {
-        scrollToBottom();
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleToggleCandidate = (id: string) => {
-        const newSelected = new Set(selectedCandidateIds);
-        if (newSelected.has(id)) {
-            newSelected.delete(id);
-        } else {
-            newSelected.add(id);
-        }
-        setSelectedCandidateIds(newSelected);
-    };
-
     const filteredCandidates = candidates
-        .filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase()))
-        .sort((a, b) => {
-            if (sortOrder === 'score') {
-                return b.totalScore - a.totalScore;
-            }
-            return (a.name || '').localeCompare(b.name || '');
-        });
+        .filter(c => c.name?.toLowerCase().includes(sidebarFilter.toLowerCase()))
+        .sort((a, b) => b.totalScore - a.totalScore);
 
-    const handleSelectAll = () => {
-        if (selectedCandidateIds.size === filteredCandidates.length && filteredCandidates.length > 0) {
-            setSelectedCandidateIds(new Set());
-        } else {
-            setSelectedCandidateIds(new Set(filteredCandidates.map(c => c.id)));
-        }
+    const toggleCandidate = (candidate: Candidate) => {
+        setSelectedCandidates(prev =>
+            prev.some(c => c.id === candidate.id)
+                ? prev.filter(c => c.id !== candidate.id)
+                : [...prev, candidate]
+        );
     };
 
-    const handleSendMessage = async (e: FormEvent) => {
-        e.preventDefault();
-        if (!input.trim() || selectedCandidateIds.size === 0) return;
+    const handleSend = async (text?: string) => {
+        const message = text || input;
+        if (!message.trim() || selectedCandidates.length === 0 || !currentSearch) return;
 
-        const userMessage: Message = {
+        const userMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'user',
-            content: input,
-            timestamp: new Date()
+            content: message,
+            date: new Date().toISOString(),
+            searchId: currentSearch.id!,
         };
-
-        setMessages(prev => [...prev, userMessage]);
+        await addChatMessage(userMsg);
         setInput('');
         setIsLoading(true);
 
         try {
-            const selectedCandidates = candidates.filter(c => selectedCandidateIds.has(c.id));
-            const response = await chatWithCandidates(selectedCandidates, input, settings.apiKey, settings.selectedModel);
-
-            const aiMessage: Message = {
+            const response = await chatWithCandidates(
+                selectedCandidates,
+                message,
+                settings.apiKey,
+                settings.selectedModel
+            );
+            const assistantMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
                 content: response,
-                timestamp: new Date()
+                date: new Date().toISOString(),
+                searchId: currentSearch.id!,
             };
-
-            setMessages(prev => [...prev, aiMessage]);
+            await addChatMessage(assistantMsg);
         } catch (error) {
-            console.error('Chat error:', error);
-            const errorMessage: Message = {
+            const errorMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
-                content: 'Lo siento, hubo un error al procesar tu solicitud. Por favor verifica tu API Key en la configuración.',
-                timestamp: new Date()
+                content: 'Error al generar la respuesta. Verifica tu API key y vuelve a intentar.',
+                date: new Date().toISOString(),
+                searchId: currentSearch.id!,
             };
-            setMessages(prev => [...prev, errorMessage]);
+            await addChatMessage(errorMsg);
         } finally {
             setIsLoading(false);
         }
     };
 
+    if (!currentSearch) {
+        return (
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                <div className="text-center">
+                    <Users size={48} className="mx-auto mb-4 text-gray-300" />
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Selecciona una búsqueda</h3>
+                    <p>Ve al Dashboard y selecciona una búsqueda para usar el chat.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex h-full bg-gray-50 dark:bg-gray-900 transition-colors">
-            {/* Sidebar - Candidate Selection */}
-            <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-colors">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
-                    <div>
-                        <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                            <User size={20} />
-                            Seleccionar Candidatos
-                        </h2>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Elige con quiénes quieres "chatear".
-                        </p>
+            {/* Sidebar */}
+            <div className="w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Users size={18} className="text-blue-600 dark:text-blue-400" />
+                        <span className="font-semibold text-gray-900 dark:text-white text-sm">Candidatos</span>
                     </div>
-
-                    {/* Search & Sort Controls */}
-                    <div className="space-y-2">
-                        <input
-                            type="text"
-                            placeholder="Buscar candidato..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                        />
-                        <div className="flex gap-2">
-                            <select
-                                value={sortOrder}
-                                onChange={(e) => setSortOrder(e.target.value as 'score' | 'name')}
-                                className="flex-1 px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
-                            >
-                                <option value="score">Por Score</option>
-                                <option value="name">Por Nombre</option>
-                            </select>
-                            <button
-                                onClick={handleSelectAll}
-                                className="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                            >
-                                {selectedCandidateIds.size === filteredCandidates.length && filteredCandidates.length > 0 ? 'Ninguno' : 'Todos'}
-                            </button>
-                        </div>
-                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 truncate">
+                        Búsqueda: <strong className="text-gray-700 dark:text-gray-300">{currentSearch.name}</strong>
+                    </p>
+                    <input
+                        type="text"
+                        placeholder="Filtrar..."
+                        value={sidebarFilter}
+                        onChange={(e) => setSidebarFilter(e.target.value)}
+                        className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                    />
                 </div>
-
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                    {filteredCandidates.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
-                            No se encontraron candidatos.
-                        </div>
-                    ) : (
-                        filteredCandidates.map(candidate => (
-                            <div
+                    {filteredCandidates.map(candidate => {
+                        const isSelected = selectedCandidates.some(c => c.id === candidate.id);
+                        return (
+                            <button
                                 key={candidate.id}
-                                onClick={() => handleToggleCandidate(candidate.id)}
-                                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedCandidateIds.has(candidate.id)
-                                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-transparent'
-                                    }`}
+                                onClick={() => toggleCandidate(candidate)}
+                                className={`w-full text-left p-3 rounded-lg text-sm transition-colors ${
+                                    isSelected
+                                        ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent'
+                                }`}
                             >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${selectedCandidateIds.has(candidate.id)
-                                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                                    }`}>
-                                    {candidate.name ? candidate.name.charAt(0).toUpperCase() : '?'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className={`text-sm font-medium truncate ${selectedCandidateIds.has(candidate.id) ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-gray-200'
-                                        }`}>
+                                <div className="flex items-center justify-between">
+                                    <span className={`font-medium truncate ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
                                         {candidate.name || 'Sin nombre'}
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                        Score: {candidate.totalScore}/40
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        {candidate.isFavorite && <Star size={12} className="text-yellow-400 fill-yellow-400" />}
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">{candidate.totalScore}</span>
                                     </div>
                                 </div>
-                                <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedCandidateIds.has(candidate.id)
-                                    ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-                                    : 'border-gray-300 dark:border-gray-600'
-                                    }`}>
-                                    {selectedCandidateIds.has(candidate.id) && (
-                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    )}
-                                </div>
-                            </div>
-                        ))
-                    )}
+                            </button>
+                        );
+                    })}
                 </div>
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                        {selectedCandidateIds.size} seleccionados
-                    </div>
+                <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 text-center">
+                    {selectedCandidates.length} seleccionados
                 </div>
             </div>
 
-            {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-gray-900 transition-colors">
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500">
-                            <MessageSquare size={48} className="mb-4 opacity-20" />
-                            <p className="text-lg font-medium text-gray-500 dark:text-gray-400">Chat con Candidatos</p>
-                            <p className="text-sm max-w-md text-center mt-2">
-                                Selecciona uno o más candidatos del panel izquierdo y haz preguntas comparativas o específicas sobre sus perfiles.
+            {/* Chat Area */}
+            <div className="flex-1 flex flex-col">
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {messages.length === 0 && (
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                            <Sparkles size={48} className="text-blue-300 dark:text-blue-500 mb-4" />
+                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Chat con IA</h3>
+                            <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md">
+                                Selecciona candidatos y haz preguntas sobre ellos. La IA analizará sus perfiles y te dará respuestas detalladas.
                             </p>
-                        </div>
-                    ) : (
-                        messages.map(msg => (
-                            <div
-                                key={msg.id}
-                                className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
-                                {msg.role === 'assistant' && (
-                                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
-                                        <Bot size={18} />
-                                    </div>
-                                )}
-                                <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user'
-                                    ? 'bg-blue-600 text-white rounded-tr-none'
-                                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-none shadow-sm'
-                                    }`}>
-                                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                                        {msg.content}
-                                    </div>
-                                    <div className={`text-xs mt-2 ${msg.role === 'user' ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500'
-                                        }`}>
-                                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
+                            {selectedCandidates.length > 0 && (
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                    {QUICK_PROMPTS.map(qp => (
+                                        <button
+                                            key={qp.label}
+                                            onClick={() => handleSend(qp.prompt)}
+                                            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-full text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-700 transition-colors"
+                                        >
+                                            {qp.label}
+                                        </button>
+                                    ))}
                                 </div>
-                                {msg.role === 'user' && (
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                                        <User size={18} />
-                                    </div>
-                                )}
-                            </div>
-                        ))
+                            )}
+                        </div>
                     )}
-                    {isLoading && (
-                        <div className="flex gap-4 justify-start">
-                            <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
-                                <Bot size={18} />
+
+                    {messages.map(msg => (
+                        <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[70%] p-4 rounded-2xl text-sm ${
+                                msg.role === 'user'
+                                    ? 'bg-blue-600 text-white rounded-br-md'
+                                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-md'
+                            }`}>
+                                {msg.role === 'assistant' ? (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                    </div>
+                                ) : (
+                                    <p>{msg.content}</p>
+                                )}
+                                <p className={`text-[10px] mt-2 ${msg.role === 'user' ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'}`}>
+                                    {new Date(msg.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
                             </div>
-                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-none p-4 shadow-sm">
+                        </div>
+                    ))}
+
+                    {isLoading && (
+                        <div className="flex justify-start">
+                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 rounded-2xl rounded-bl-md">
                                 <div className="flex gap-1">
-                                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                                 </div>
                             </div>
                         </div>
@@ -250,25 +209,42 @@ export function ChatView() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input Area */}
-                <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 transition-colors">
-                    <form onSubmit={handleSendMessage} className="flex gap-2 max-w-4xl mx-auto">
+                {/* Quick Prompts (when messages exist) */}
+                {messages.length > 0 && selectedCandidates.length > 0 && (
+                    <div className="px-6 pb-2 flex gap-2 overflow-x-auto">
+                        {QUICK_PROMPTS.map(qp => (
+                            <button
+                                key={qp.label}
+                                onClick={() => handleSend(qp.prompt)}
+                                disabled={isLoading}
+                                className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 whitespace-nowrap shrink-0 transition-colors disabled:opacity-50"
+                            >
+                                {qp.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Input */}
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <div className="flex gap-3">
                         <input
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder={selectedCandidateIds.size === 0 ? "Selecciona candidatos para comenzar..." : "Escribe tu pregunta..."}
-                            disabled={selectedCandidateIds.size === 0 || isLoading}
-                            className="flex-1 border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-gray-900 dark:disabled:text-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                            placeholder={selectedCandidates.length === 0 ? "Selecciona candidatos primero..." : "Escribe tu pregunta..."}
+                            disabled={selectedCandidates.length === 0 || isLoading}
+                            className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                         />
                         <button
-                            type="submit"
-                            disabled={selectedCandidateIds.size === 0 || isLoading || !input.trim()}
-                            className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors"
+                            onClick={() => handleSend()}
+                            disabled={!input.trim() || selectedCandidates.length === 0 || isLoading}
+                            className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
                         >
-                            <Send size={20} />
+                            <Send size={18} />
                         </button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>

@@ -38,6 +38,23 @@ export interface Note {
     date: string;
 }
 
+export interface ActivityLogEntry {
+    id: string;
+    action: 'status_change' | 'note_added' | 'interview_date_set' | 'tag_added' | 'tag_removed' | 'created' | 'favorite_toggled' | 'rejection_reason_set';
+    description: string;
+    from?: string;
+    to?: string;
+    date: string;
+}
+
+export interface ChatMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    date: string;
+    searchId: number;
+}
+
 export interface ContactInfo {
     name: string | null;
     email: string | null;
@@ -73,6 +90,9 @@ export interface Candidate {
     weaknesses?: string[]; // New feature
     criticalAnalysis?: string; // New feature
     tags?: string[];
+    activityLog?: ActivityLogEntry[];
+    rejectionReason?: string;
+    sortOrder?: number;
     createdAt: string;
     updatedAt: string;
 }

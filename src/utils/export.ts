@@ -1,4 +1,5 @@
 import { Candidate } from '../types';
+import { getStageLabel } from '../types/pipeline';
 
 export function exportCandidatesToCSV(candidates: Candidate[]) {
     const headers = [
@@ -13,6 +14,7 @@ export function exportCandidatesToCSV(candidates: Candidate[]) {
         'Estado',
         'Favorito',
         'Fecha Entrevista',
+        'Tags',
         'Notas'
     ];
 
@@ -25,9 +27,10 @@ export function exportCandidatesToCSV(candidates: Candidate[]) {
         c.education,
         c.previousJobs,
         c.proactivity,
-        c.status,
+        getStageLabel(c.status),
         c.isFavorite ? 'Sí' : 'No',
         c.interviewDate ? new Date(c.interviewDate).toLocaleDateString() : '',
+        (c.tags || []).join(', '),
         Array.isArray(c.notes) ? c.notes.map(n => n.content).join(' | ') : (c.notes || '')
     ]);
 
@@ -46,4 +49,5 @@ export function exportCandidatesToCSV(candidates: Candidate[]) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }

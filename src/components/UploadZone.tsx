@@ -140,20 +140,20 @@ export function UploadZone() {
                 onDrop={handleDrop}
                 className={`
           border-2 border-dashed rounded-xl p-8 text-center transition-colors
-          ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'}
+          ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'}
           ${isProcessing ? 'opacity-50 pointer-events-none' : ''}
         `}
             >
                 <div className="flex flex-col items-center justify-center gap-4">
-                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center">
                         <Upload size={32} />
                     </div>
 
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             Arrastra y suelta CVs aquí
                         </h3>
-                        <p className="text-gray-500 mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">
                             o haz clic para seleccionar archivos PDF
                         </p>
                     </div>
@@ -168,7 +168,7 @@ export function UploadZone() {
                     />
                     <label
                         htmlFor="file-upload"
-                        className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 cursor-pointer shadow-sm"
+                        className="px-6 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer shadow-sm"
                     >
                         Seleccionar Archivos
                     </label>

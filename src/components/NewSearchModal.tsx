@@ -8,16 +8,9 @@ interface NewSearchModalProps {
     onClose: () => void;
 }
 
-const DEFAULT_CRITERIA = {
-    relevance: { name: 'Relevancia del Perfil al Puesto', desc: 'Compara el contenido del CV con el contexto del puesto de trabajo. Considera habilidades, experiencia y ajuste general.' },
-    education: { name: 'Nivel Educativo', desc: 'Evalúa el prestigio de las instituciones educativas. El título principal cuenta el 80% del valor, certificaciones adicionales, programas de intercambio, etc. cuentan el 20%.' },
-    previousJobs: { name: 'Trabajos Previos', desc: 'Evalúa el prestigio de empleadores anteriores y del nivel del último puesto ocupado.' },
-    proactivity: { name: 'Proactividad', desc: 'Evalúa actividades extracurriculares, certificaciones, aprendizaje continuo e iniciativa mostrada más allá de los requisitos básicos del trabajo.' }
-};
-
 export function NewSearchModal({ isOpen, onClose }: NewSearchModalProps) {
     const navigate = useNavigate();
-    const { createSearch } = useAppStore();
+    const { createSearch, settings } = useAppStore();
     const [name, setName] = useState('');
     const [jobDescription, setJobDescription] = useState('');
     const [personalizedInstructions, setPersonalizedInstructions] = useState('');
@@ -31,11 +24,18 @@ export function NewSearchModal({ isOpen, onClose }: NewSearchModalProps) {
 
         setIsSubmitting(true);
         try {
+            const evaluationCriteria = settings.defaultEvaluationCriteria || {
+                relevance: { name: 'Relevancia del Perfil al Puesto', desc: 'Compara el contenido del CV con el contexto del puesto de trabajo.' },
+                education: { name: 'Nivel Educativo', desc: 'Evalúa el prestigio de las instituciones educativas.' },
+                previousJobs: { name: 'Trabajos Previos', desc: 'Evalúa el prestigio de empleadores anteriores.' },
+                proactivity: { name: 'Proactividad', desc: 'Evalúa actividades extracurriculares, certificaciones y aprendizaje continuo.' }
+            };
+
             const id = await createSearch({
                 name,
                 jobDescription,
                 personalizedInstructions,
-                evaluationCriteria: DEFAULT_CRITERIA,
+                evaluationCriteria,
                 status: 'active'
             });
             onClose();
@@ -48,18 +48,18 @@ export function NewSearchModal({ isOpen, onClose }: NewSearchModalProps) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <h2 className="text-xl font-bold text-gray-900">Nueva Búsqueda</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nueva Búsqueda</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                         <X size={24} />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Nombre de la Búsqueda
                         </label>
                         <input
@@ -67,33 +67,33 @@ export function NewSearchModal({ isOpen, onClose }: NewSearchModalProps) {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Ej. Frontend Developer Senior"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Descripción del Puesto
                         </label>
                         <textarea
                             value={jobDescription}
                             onChange={(e) => setJobDescription(e.target.value)}
                             placeholder="Pega aquí la descripción completa del puesto..."
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-40"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-40 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Instrucciones Adicionales (Opcional)
                         </label>
                         <textarea
                             value={personalizedInstructions}
                             onChange={(e) => setPersonalizedInstructions(e.target.value)}
                             placeholder="Instrucciones específicas para la IA (ej. 'Dar prioridad a candidatos con experiencia en Fintech')"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-24"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-24 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                         />
                     </div>
 
@@ -101,7 +101,7 @@ export function NewSearchModal({ isOpen, onClose }: NewSearchModalProps) {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
+                            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium"
                         >
                             Cancelar
                         </button>
